@@ -16,8 +16,20 @@
       width:480px; display:flex;
       justify-content:space-between; align-items:center;
     }
-    .back { color:#8888cc; text-decoration:none; font-size:13px; transition:color .2s; }
-    .back:hover { color:#aaaaee; }
+    .back-home {
+      position:fixed; top:18px; left:18px;
+      padding:8px 14px;
+      background:#3d4f3a;
+      border:1px solid #6b8568;
+      border-radius:8px;
+      color:#c5d8c0;
+      text-decoration:none;
+      font-family:'Courier New',monospace;
+      font-size:13px; letter-spacing:1px; font-weight:bold;
+      transition:background .2s, color .2s, border-color .2s;
+      z-index:20;
+    }
+    .back-home:hover { background:#4d6549; color:#fff; border-color:#8ba888; }
     #game-label { font-size:13px; letter-spacing:3px; color:#cf6600; font-weight:bold; }
     #hud { width:480px; display:flex; gap:8px; }
     .panel {
@@ -55,8 +67,10 @@
   <button id="start-btn">JUGAR</button>
 </div>
 
+<a class="back-home" href="../">← BrowserLab</a>
+
 <div id="topbar">
-  <a class="back" href="../">← BrowserLab</a>
+  <span></span>
   <span id="game-label">BREAKOUT</span>
   <span></span>
 </div>
