@@ -1,36 +1,40 @@
-# 🎮 Mini Juegos
+# ⬡ BrowserLab — Juegos de Navegador
 
-Colección de juegos de navegador hechos con HTML/CSS/JS puro — sin instalación, sin dependencias. Solo abre el archivo y juega.
+Colección de juegos clásicos hechos con HTML/CSS/JS puro. Sin instalación, sin cuenta, sin tracking.
+
+🔗 **[Jugar ahora → chekitocantu.github.io/mini-juegos](https://chekitocantu.github.io/mini-juegos/)**
 
 ## Juegos
 
-### 🟦 Tetris
-El clásico Tetris con:
-- Sistema **7-bag** (piezas balanceadas, sin repeticiones interminables)
-- **Pieza fantasma** que muestra dónde cae
-- Niveles que aumentan la velocidad cada 10 líneas
-- Puntuación con bonus por caída rápida
-
-**Controles:**
-| Tecla | Acción |
+| Juego | Estado |
 |-------|--------|
-| `← →` | Mover |
-| `↑` | Rotar |
-| `↓` | Bajar suave |
-| `Espacio` | Caída instantánea |
-| `ESC` | Pausa |
+| 🟦 Tetris | ✅ Disponible |
+| 🐍 Snake | 🔜 Próximamente |
+| 🧱 Breakout | 🔜 Próximamente |
+| 🔢 2048 | 🔜 Próximamente |
 
-## Cómo jugar
+## ¿Te lo bloquearon? Forkéalo
 
-1. Descarga o clona el repositorio
-2. Abre `index.html` en tu navegador
-3. ¡A jugar!
+1. Haz clic en **Fork** arriba a la derecha
+2. Ve a **Settings → Pages** → selecciona rama `master`, carpeta `/root`
+3. Tu copia queda en `https://tuusuario.github.io/mini-juegos`
 
-```bash
-git clone https://github.com/chekitocantu/mini-juegos.git
-cd mini-juegos
-# Abre index.html en tu navegador
+Sin configuración, sin servidor, gratis para siempre.
+
+## Estructura
+
+```
+mini-juegos/
+├── index.html       ← Página principal (hub)
+├── tetris/
+│   └── index.html   ← Juego de Tetris
+└── README.md
 ```
 
+## Agregar un juego nuevo
+
+Crea una carpeta nueva con un `index.html` dentro y añade una card en el `index.html` principal.
+
 ---
-Hecho con ❤️ — sin frameworks, sin dependencias.
+
+Sin frameworks · Sin dependencias · 100% Open Source
