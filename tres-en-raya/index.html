@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tres en raya — BrowserLab</title>
+  <style>
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      background:#1a1a2e; color:#eee;
+      font-family:'Courier New',monospace;
+      display:flex; flex-direction:column; align-items:center;
+      justify-content:center; min-height:100vh; gap:14px;
+      padding:70px 20px 20px;
+    }
+
+    .back-home {
+      position:fixed; top:18px; left:18px;
+      padding:8px 14px;
+      background:#3d4f3a;
+      border:1px solid #6b8568;
+      border-radius:8px;
+      color:#c5d8c0;
+      text-decoration:none;
+      font-family:'Courier New',monospace;
+      font-size:13px; letter-spacing:1px; font-weight:bold;
+      transition:background .2s, color .2s, border-color .2s;
+      z-index:20;
+    }
+    .back-home:hover { background:#4d6549; color:#fff; border-color:#8ba888; }
+
+    #topbar { width:332px; display:flex; justify-content:space-between; align-items:center; }
+    #game-label { font-size:13px; letter-spacing:3px; color:#f97316; font-weight:bold; }
+
+    /* Turno actual */
+    #turn-row {
+      width:332px; display:flex; justify-content:center; align-items:center; gap:14px;
+      background:#16213e; border:1px solid #4a4a8a; border-radius:8px;
+      padding:10px 16px;
+    }
+    .turn-label { font-size:11px; letter-spacing:2px; color:#8888cc; text-transform:uppercase; }
+    .turn-value { font-size:24px; font-weight:bold; transition:color .2s; }
+    .turn-value.x { color:#f97316; }
+    .turn-value.o { color:#3b82f6; }
+
+    /* Tablero */
+    #board {
+      display:grid;
+      grid-template-columns:repeat(3, 100px);
+      grid-template-rows:repeat(3, 100px);
+      gap:8px; padding:8px;
+      background:#0f1629;
+      border-radius:12px;
+      border:2px solid #4a4a8a;
+      box-shadow:0 0 30px #4a4a8a88;
+    }
+
+    .cell {
+      background:#1a1a2e;
+      border:3px solid transparent;
+      border-radius:8px;
+      display:flex; align-items:center; justify-content:center;
+      font-size:60px; font-weight:bold;
+      cursor:pointer; user-select:none;
+      transition:border-color .15s, background .2s, transform .1s;
+    }
+    .cell:hover:not(.x):not(.o) { background:#222244; }
+    /* Solo el contorno cuando está seleccionada — sin holograma de la pieza */
+    .cell.selected {
+      border-color:#6b8568;
+      box-shadow:0 0 14px #6b8568aa;
+    }
+    .cell.x { color:#f97316; }
+    .cell.o { color:#3b82f6; }
+    .cell.winning {
+      background:#2a3d2a;
+      border-color:#8ba888;
+      animation:pulse 0.6s ease-out;
+    }
+    @keyframes pulse {
+      0% { transform:scale(1); }
+      50% { transform:scale(1.06); }
+      100% { transform:scale(1); }
+    }
+
+    /* Marcador */
+    #scores { width:332px; display:flex; gap:8px; }
+    .score {
+      flex:1; background:#16213e; border:1px solid #4a4a8a;
+      border-radius:6px; padding:8px 6px; text-align:center;
+    }
+    .score-label { font-size:10px; letter-spacing:2px; color:#8888cc; text-transform:uppercase; }
+    .score-value { font-size:22px; font-weight:bold; color:#fff; margin-top:2px; }
+    .score.x .score-label { color:#f97316; }
+    .score.o .score-label { color:#3b82f6; }
+
+    #hint { font-size:11px; color:#555; text-align:center; }
+    #hint kbd {
+      background:#16213e; border:1px solid #4a4a8a; border-radius:3px;
+      padding:1px 6px; font-family:inherit; font-size:10px; color:#aaa;
+    }
+
+    /* Overlay */
+    #overlay {
+      position:fixed; inset:0; background:#000a;
+      display:flex; flex-direction:column;
+      justify-content:center; align-items:center;
+      gap:14px; z-index:10;
+    }
+    #overlay h1 { font-size:38px; letter-spacing:5px; color:#fff; text-shadow:0 0 20px #f97316; }
+    #overlay .overlay-sub { color:#aaa; font-size:13px; text-align:center; line-height:1.6; max-width:320px; }
+
+    .menu-actions {
+      display:flex; flex-direction:column; gap:8px;
+      width:240px; margin-top:6px;
+    }
+    .btn-primary, .btn-secondary {
+      padding:12px 24px; font-size:15px; font-family:inherit;
+      border-radius:8px; cursor:pointer;
+      letter-spacing:2px; font-weight:bold;
+      text-align:center; text-decoration:none;
+      display:block; transition:all .2s;
+    }
+    .btn-primary { background:#f97316; color:#000; border:none; }
+    .btn-primary:hover { background:#fb923c; }
+    .btn-secondary {
+      background:transparent; color:#888;
+      border:1px solid #4a4a8a;
+      font-size:12px; font-weight:normal; letter-spacing:1px;
+    }
+    .btn-secondary:hover { background:#16213e; color:#aaa; }
+
+    .hidden { display:none !important; }
+  </style>
+</head>
+<body>
+
+<a class="back-home" href="../">← BrowserLab</a>
+
+<div id="overlay">
+  <h1>TRES EN RAYA</h1>
+  <p class="overlay-sub" id="overlay-sub">Dos jugadores · X empieza · Llega a 3 en línea</p>
+
+  <div class="menu-actions">
+    <button id="start-btn" class="btn-primary">▶ JUGAR</button>
+    <a class="btn-secondary" href="../">← Volver al inicio</a>
+  </div>
+</div>
+
+<div id="topbar">
+  <span></span>
+  <span id="game-label">TRES EN RAYA</span>
+  <span></span>
+</div>
+
+<div id="turn-row">
+  <span class="turn-label">Turno de:</span>
+  <span class="turn-value x" id="turn">X</span>
+</div>
+
+<div id="board">
+  <div class="cell" data-i="0"></div>
+  <div class="cell" data-i="1"></div>
+  <div class="cell" data-i="2"></div>
+  <div class="cell" data-i="3"></div>
+  <div class="cell" data-i="4"></div>
+  <div class="cell" data-i="5"></div>
+  <div class="cell" data-i="6"></div>
+  <div class="cell" data-i="7"></div>
+  <div class="cell" data-i="8"></div>
+</div>
+
+<div id="scores">
+  <div class="score x">
+    <div class="score-label">X gana</div>
+    <div class="score-value" id="score-x">0</div>
+  </div>
+  <div class="score o">
+    <div class="score-label">O gana</div>
+    <div class="score-value" id="score-o">0</div>
+  </div>
+  <div class="score">
+    <div class="score-label">Empates</div>
+    <div class="score-value" id="score-d">0</div>
+  </div>
+</div>
+
+<div id="hint">
+  <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> mover  ·
+  <kbd>Enter</kbd> colocar  ·
+  <kbd>R</kbd> reiniciar marcador
+</div>
+
+<script>
+const cells = document.querySelectorAll('.cell');
+const LINES = [
+  [0,1,2],[3,4,5],[6,7,8],
+  [0,3,6],[1,4,7],[2,5,8],
+  [0,4,8],[2,4,6]
+];
+
+let board, cursor, current, over;
+let scores = JSON.parse(localStorage.getItem('ttt-scores') || '{"X":0,"O":0,"D":0}');
+
+function init() {
+  board   = Array(9).fill(null);
+  cursor  = 4;
+  current = 'X';
+  over    = false;
+  render();
+}
+
+function render() {
+  cells.forEach((cell, i) => {
+    cell.classList.remove('selected','x','o','winning');
+    cell.textContent = board[i] || '';
+    if (board[i] === 'X') cell.classList.add('x');
+    if (board[i] === 'O') cell.classList.add('o');
+    if (i === cursor && !over) cell.classList.add('selected');
+  });
+  const turnEl = document.getElementById('turn');
+  turnEl.textContent = current;
+  turnEl.className = 'turn-value ' + current.toLowerCase();
+}
+
+function updateScores() {
+  document.getElementById('score-x').textContent = scores.X;
+  document.getElementById('score-o').textContent = scores.O;
+  document.getElementById('score-d').textContent = scores.D;
+}
+updateScores();
+
+function checkWin() {
+  for (const line of LINES) {
+    const [a,b,c] = line;
+    if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+      return { winner: board[a], line };
+    }
+  }
+  return null;
+}
+
+function place() {
+  if (over || board[cursor]) return;
+  board[cursor] = current;
+
+  const win = checkWin();
+  if (win) {
+    over = true;
+    scores[win.winner]++;
+    localStorage.setItem('ttt-scores', JSON.stringify(scores));
+    render();
+    win.line.forEach(i => cells[i].classList.add('winning'));
+    updateScores();
+    setTimeout(() => showOverlay(
+      `¡${win.winner} GANA!`,
+      `X ${scores.X}  ·  O ${scores.O}  ·  Empates ${scores.D}`
+    ), 700);
+    return;
+  }
+
+  if (board.every(c => c)) {
+    over = true;
+    scores.D++;
+    localStorage.setItem('ttt-scores', JSON.stringify(scores));
+    updateScores();
+    render();
+    setTimeout(() => showOverlay(
+      'EMPATE',
+      `X ${scores.X}  ·  O ${scores.O}  ·  Empates ${scores.D}`
+    ), 400);
+    return;
+  }
+
+  current = current === 'X' ? 'O' : 'X';
+  render();
+}
+
+function showOverlay(title, sub) {
+  const ol = document.getElementById('overlay');
+  ol.querySelector('h1').textContent = title;
+  document.getElementById('overlay-sub').textContent = sub;
+  document.getElementById('start-btn').textContent = '▶ JUGAR DE NUEVO';
+  ol.classList.remove('hidden');
+}
+
+// ── Controles ────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  // Reset marcador (siempre disponible)
+  if (e.code === 'KeyR') {
+    e.preventDefault();
+    scores = { X:0, O:0, D:0 };
+    localStorage.setItem('ttt-scores', JSON.stringify(scores));
+    updateScores();
+    return;
+  }
+
+  if (over) return;
+  // No procesar si el overlay está visible
+  if (!document.getElementById('overlay').classList.contains('hidden')) return;
+
+  switch (e.code) {
+    case 'ArrowLeft':  e.preventDefault(); if (cursor % 3 > 0) cursor--; break;
+    case 'ArrowRight': e.preventDefault(); if (cursor % 3 < 2) cursor++; break;
+    case 'ArrowUp':    e.preventDefault(); if (cursor >= 3)    cursor -= 3; break;
+    case 'ArrowDown':  e.preventDefault(); if (cursor < 6)     cursor += 3; break;
+    case 'Enter':
+    case 'Space':      e.preventDefault(); place(); return;
+    default: return;
+  }
+  render();
+});
+
+// Click directo en celdas (touch / ratón)
+cells.forEach((cell, i) => {
+  cell.addEventListener('click', () => {
+    if (over) return;
+    if (!document.getElementById('overlay').classList.contains('hidden')) return;
+    cursor = i;
+    place();
+  });
+});
+
+document.getElementById('start-btn').addEventListener('click', () => {
+  document.getElementById('overlay').classList.add('hidden');
+  init();
+});
+</script>
+</body>
+</html>

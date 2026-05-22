@@ -203,6 +203,7 @@
     .card[data-game="pong"]     .card-preview { background: linear-gradient(135deg, #1a1a1a, #2d2d2d); }
     .card[data-game="breakout"] .card-preview { background: linear-gradient(135deg, #2b0d1a, #4a0a20); }
     .card[data-game="2048"]     .card-preview { background: linear-gradient(135deg, #2b1a00, #4a2d00); }
+    .card[data-game="tres-en-raya"] .card-preview { background: linear-gradient(135deg, #2a1505, #4a2810); }
 
     .card-preview .emoji { position: relative; z-index: 1; filter: drop-shadow(0 4px 16px #0008); }
 
@@ -400,7 +401,7 @@
   <h1>Juega desde<br>el <em>navegador</em></h1>
   <p>Sin instalaciones, sin cuentas. Solo abre y juega. Todo el código es libre y público.</p>
   <div class="hero-stats">
-    <div class="stat"><div class="stat-n">4</div><div class="stat-l">Juegos activos</div></div>
+    <div class="stat"><div class="stat-n">5</div><div class="stat-l">Juegos activos</div></div>
     <div class="stat"><div class="stat-n">0ms</div><div class="stat-l">Para cargar</div></div>
     <div class="stat"><div class="stat-n">100%</div><div class="stat-l">Open source</div></div>
   </div>
@@ -408,7 +409,7 @@
 
 <!-- GAMES GRID -->
 <section class="section" id="juegos">
-  <div class="section-title">Juegos disponibles</div>
+  <div class="section-title">Un jugador</div>
   <div class="grid">
 
     <!-- TETRIS -->
@@ -478,6 +479,32 @@
           <span class="tag">Puzzle</span>
           <span class="tag">1 jugador</span>
           <span class="tag">Swipe</span>
+        </div>
+        <span class="play-btn">▶ Jugar ahora</span>
+      </div>
+    </a>
+
+  </div>
+</section>
+
+<!-- DOS JUGADORES -->
+<section class="section">
+  <div class="section-title">Dos jugadores</div>
+  <div class="grid">
+
+    <!-- TRES EN RAYA -->
+    <a class="card" data-game="tres-en-raya" href="tres-en-raya/">
+      <div class="card-preview">
+        <span class="emoji">⭕</span>
+        <span class="live-badge">EN VIVO</span>
+      </div>
+      <div class="card-body">
+        <div class="card-name">Tres en raya</div>
+        <div class="card-desc">El clásico tic-tac-toe. Dos jugadores se turnan en un tablero 3x3 hasta que alguien forma tres en línea.</div>
+        <div class="card-tags">
+          <span class="tag">Estrategia</span>
+          <span class="tag">2 jugadores</span>
+          <span class="tag">Local</span>
         </div>
         <span class="play-btn">▶ Jugar ahora</span>
       </div>
