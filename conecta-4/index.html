@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Conecta 4 — BrowserLab</title>
+  <style>
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+    :root {
+      --cell-size: 54px;
+      --cell-gap: 6px;
+      --row-step: calc(var(--cell-size) + var(--cell-gap));
+    }
+
+    body {
+      background:#1a1a2e; color:#eee;
+      font-family:'Courier New',monospace;
+      display:flex; flex-direction:column; align-items:center;
+      justify-content:center; min-height:100vh; gap:12px;
+      padding:70px 20px 20px;
+    }
+
+    .back-home {
+      position:fixed; top:18px; left:18px;
+      padding:8px 14px;
+      background:#3d4f3a;
+      border:1px solid #6b8568;
+      border-radius:8px;
+      color:#c5d8c0;
+      text-decoration:none;
+      font-family:'Courier New',monospace;
+      font-size:13px; letter-spacing:1px; font-weight:bold;
+      transition:background .2s, color .2s, border-color .2s;
+      z-index:20;
+    }
+    .back-home:hover { background:#4d6549; color:#fff; border-color:#8ba888; }
+
+    #topbar {
+      width:432px; max-width:100%; display:flex;
+      justify-content:space-between; align-items:center;
+    }
+    #game-label { font-size:13px; letter-spacing:3px; color:#facc15; font-weight:bold; }
+
+    /* Turno */
+    #turn-row {
+      width:432px; max-width:100%;
+      display:flex; justify-content:center; align-items:center; gap:14px;
+      background:#16213e; border:1px solid #4a4a8a; border-radius:8px;
+      padding:10px 16px;
+    }
+    .turn-label { font-size:11px; letter-spacing:2px; color:#8888cc; text-transform:uppercase; }
+    .turn-value { font-size:22px; font-weight:bold; transition:color .2s; letter-spacing:2px; }
+    .turn-value.red    { color:#ef4444; }
+    .turn-value.yellow { color:#facc15; }
+
+    /* Área del juego */
+    #game-area {
+      display:flex; flex-direction:column; align-items:center; gap:2px;
+    }
+
+    /* Fila del holograma — encima del tablero */
+    #hologram-row {
+      display:grid;
+      grid-template-columns:repeat(7, var(--cell-size));
+      gap:var(--cell-gap);
+      padding:0 8px;
+      height:var(--cell-size);
+    }
+
+    .hologram-cell {
+      width:var(--cell-size); height:var(--cell-size);
+      border-radius:50%;
+      position:relative;
+      cursor:pointer;
+      transition:transform .15s;
+    }
+
+    .hologram-cell.preview::before {
+      content:'';
+      position:absolute; inset:0;
+      border-radius:50%;
+      opacity:.55;
+      animation:hover 1.4s ease-in-out infinite;
+      box-shadow:inset 0 -3px 6px #00000044;
+    }
+    .hologram-cell.preview.red::before    { background:radial-gradient(circle at 35% 35%, #ff8888, #ef4444); }
+    .hologram-cell.preview.yellow::before { background:radial-gradient(circle at 35% 35%, #fde047, #eab308); }
+
+    @keyframes hover {
+      0%, 100% { transform:translateY(-3px); }
+      50%      { transform:translateY(3px); }
+    }
+
+    /* Tablero (marco azul tipo Conecta-4 clásico) */
+    #board {
+      display:grid;
+      grid-template-columns:repeat(7, var(--cell-size));
+      grid-template-rows:repeat(6, var(--cell-size));
+      gap:var(--cell-gap);
+      padding:8px;
+      background:linear-gradient(180deg, #1e3a5f, #14284a);
+      border-radius:12px;
+      border:2px solid #4a4a8a;
+      box-shadow:0 0 30px #4a4a8a88, inset 0 2px 8px #00000044;
+    }
+
+    .cell {
+      width:var(--cell-size); height:var(--cell-size);
+      background:#0a1530;
+      border-radius:50%;
+      box-shadow:inset 0 2px 6px #00000088, inset 0 -1px 2px #ffffff11;
+      position:relative;
+      cursor:pointer;
+    }
+
+    .cell.red {
+      background:radial-gradient(circle at 35% 35%, #ff8888, #ef4444);
+      box-shadow:inset 0 -3px 6px #00000044, 0 1px 2px #00000088;
+    }
+    .cell.yellow {
+      background:radial-gradient(circle at 35% 35%, #fde047, #eab308);
+      box-shadow:inset 0 -3px 6px #00000044, 0 1px 2px #00000088;
+    }
+
+    .cell.dropping {
+      animation:drop var(--drop-duration, 0.35s) cubic-bezier(0.5, 0.05, 0.7, 1);
+    }
+    @keyframes drop {
+      from { transform:translateY(calc(var(--drop-from) * var(--row-step) * -1)); }
+      to   { transform:translateY(0); }
+    }
+
+    .cell.winning {
+      animation:winPulse 0.7s ease-in-out infinite;
+      z-index:1;
+    }
+    @keyframes winPulse {
+      0%, 100% { box-shadow:inset 0 -3px 6px #00000044, 0 0 8px #fff8; }
+      50%      { box-shadow:inset 0 -3px 6px #00000044, 0 0 22px #fff; }
+    }
+
+    /* Marcador */
+    #scores { width:432px; max-width:100%; display:flex; gap:8px; }
+    .score {
+      flex:1; background:#16213e; border:1px solid #4a4a8a;
+      border-radius:6px; padding:8px 6px; text-align:center;
+    }
+    .score-label { font-size:10px; letter-spacing:2px; color:#8888cc; text-transform:uppercase; }
+    .score-value { font-size:22px; font-weight:bold; color:#fff; margin-top:2px; }
+    .score.red    .score-label { color:#ef4444; }
+    .score.yellow .score-label { color:#facc15; }
+
+    #hint { font-size:11px; color:#555; text-align:center; }
+    #hint kbd {
+      background:#16213e; border:1px solid #4a4a8a; border-radius:3px;
+      padding:1px 6px; font-family:inherit; font-size:10px; color:#aaa;
+    }
+
+    /* Overlay */
+    #overlay {
+      position:fixed; inset:0; background:#000a;
+      display:flex; flex-direction:column;
+      justify-content:center; align-items:center;
+      gap:14px; z-index:10;
+    }
+    #overlay h1 { font-size:38px; letter-spacing:5px; color:#fff; text-shadow:0 0 20px #facc15; }
+    #overlay .overlay-sub { color:#aaa; font-size:13px; text-align:center; line-height:1.6; max-width:340px; }
+    .winner-red    { color:#ef4444 !important; text-shadow:0 0 20px #ef4444 !important; }
+    .winner-yellow { color:#facc15 !important; text-shadow:0 0 20px #facc15 !important; }
+
+    .menu-actions {
+      display:flex; flex-direction:column; gap:8px;
+      width:240px; margin-top:6px;
+    }
+    .btn-primary, .btn-secondary {
+      padding:12px 24px; font-size:15px; font-family:inherit;
+      border-radius:8px; cursor:pointer;
+      letter-spacing:2px; font-weight:bold;
+      text-align:center; text-decoration:none;
+      display:block; transition:all .2s;
+    }
+    .btn-primary { background:#facc15; color:#000; border:none; }
+    .btn-primary:hover { background:#fde047; }
+    .btn-secondary {
+      background:transparent; color:#888;
+      border:1px solid #4a4a8a;
+      font-size:12px; font-weight:normal; letter-spacing:1px;
+    }
+    .btn-secondary:hover { background:#16213e; color:#aaa; }
+
+    .hidden { display:none !important; }
+
+    /* Responsive — tablero más pequeño en móvil */
+    @media (max-width: 500px) {
+      :root { --cell-size: 40px; --cell-gap: 5px; }
+      #topbar, #turn-row, #scores { width:320px; }
+    }
+  </style>
+</head>
+<body>
+
+<a class="back-home" href="../">← BrowserLab</a>
+
+<div id="overlay">
+  <h1>CONECTA 4</h1>
+  <p class="overlay-sub" id="overlay-sub">Dos jugadores · Rojo empieza<br>4 en línea para ganar (horizontal, vertical o diagonal)</p>
+
+  <div class="menu-actions">
+    <button id="start-btn" class="btn-primary">▶ JUGAR</button>
+    <a class="btn-secondary" href="../">← Volver al inicio</a>
+  </div>
+</div>
+
+<div id="topbar">
+  <span></span>
+  <span id="game-label">CONECTA 4</span>
+  <span></span>
+</div>
+
+<div id="turn-row">
+  <span class="turn-label">Turno de:</span>
+  <span class="turn-value red" id="turn">ROJO</span>
+</div>
+
+<div id="game-area">
+  <div id="hologram-row"></div>
+  <div id="board"></div>
+</div>
+
+<div id="scores">
+  <div class="score red">
+    <div class="score-label">Rojo</div>
+    <div class="score-value" id="score-r">0</div>
+  </div>
+  <div class="score yellow">
+    <div class="score-label">Amarillo</div>
+    <div class="score-value" id="score-y">0</div>
+  </div>
+  <div class="score">
+    <div class="score-label">Empates</div>
+    <div class="score-value" id="score-d">0</div>
+  </div>
+</div>
+
+<div id="hint">
+  <kbd>←</kbd><kbd>→</kbd> mover  ·
+  <kbd>↓</kbd>/<kbd>Enter</kbd> soltar  ·
+  <kbd>R</kbd> reset marcador
+</div>
+
+<script>
+const COLS = 7, ROWS_ = 6;
+
+// Construir celdas dinámicamente
+const hologramRow = document.getElementById('hologram-row');
+const boardEl     = document.getElementById('board');
+
+const hologramCells = [];
+for (let c = 0; c < COLS; c++) {
+  const div = document.createElement('div');
+  div.className = 'hologram-cell';
+  div.dataset.col = c;
+  hologramRow.appendChild(div);
+  hologramCells.push(div);
+}
+
+const cells = [];
+for (let r = 0; r < ROWS_; r++) {
+  for (let c = 0; c < COLS; c++) {
+    const div = document.createElement('div');
+    div.className = 'cell';
+    div.dataset.row = r; div.dataset.col = c;
+    boardEl.appendChild(div);
+    cells.push(div);
+  }
+}
+
+let board, cursor, current, over, dropping;
+let scores = JSON.parse(localStorage.getItem('c4-scores') || '{"R":0,"Y":0,"D":0}');
+
+function colorOf(p) { return p === 'R' ? 'red' : 'yellow'; }
+function nameOf(p)  { return p === 'R' ? 'ROJO' : 'AMARILLO'; }
+
+function init() {
+  board    = Array.from({length: ROWS_}, () => Array(COLS).fill(null));
+  cursor   = 3;
+  current  = 'R';
+  over     = false;
+  dropping = false;
+  render();
+}
+
+function isColFull(c) { return board[0][c] !== null; }
+
+function render() {
+  // Holograma — solo el borde y un disco semi-transparente en la columna seleccionada
+  hologramCells.forEach((cell, i) => {
+    cell.className = 'hologram-cell';
+    if (i === cursor && !over && !dropping && !isColFull(i)) {
+      cell.classList.add('preview', colorOf(current));
+    }
+  });
+
+  // Tablero
+  cells.forEach((cell, idx) => {
+    const r = Math.floor(idx / COLS), c = idx % COLS;
+    cell.classList.remove('red','yellow','winning');
+    if (board[r][c] === 'R') cell.classList.add('red');
+    if (board[r][c] === 'Y') cell.classList.add('yellow');
+  });
+
+  // Turno
+  const turnEl = document.getElementById('turn');
+  turnEl.textContent = nameOf(current);
+  turnEl.className   = 'turn-value ' + colorOf(current);
+}
+
+function updateScores() {
+  document.getElementById('score-r').textContent = scores.R;
+  document.getElementById('score-y').textContent = scores.Y;
+  document.getElementById('score-d').textContent = scores.D;
+}
+updateScores();
+
+// Win check — busca 4 en línea pasando por (row, col)
+function checkWin(row, col, p) {
+  const dirs = [[[0,1],[0,-1]], [[1,0],[-1,0]], [[1,1],[-1,-1]], [[1,-1],[-1,1]]];
+  for (const [[d1r,d1c],[d2r,d2c]] of dirs) {
+    let line = [[row, col]];
+    for (let i = 1; i < ROWS_*COLS; i++) {
+      const r = row + d1r*i, c = col + d1c*i;
+      if (r<0||r>=ROWS_||c<0||c>=COLS||board[r][c]!==p) break;
+      line.push([r, c]);
+    }
+    for (let i = 1; i < ROWS_*COLS; i++) {
+      const r = row + d2r*i, c = col + d2c*i;
+      if (r<0||r>=ROWS_||c<0||c>=COLS||board[r][c]!==p) break;
+      line.unshift([r, c]);
+    }
+    if (line.length >= 4) return line;
+  }
+  return null;
+}
+
+function drop(col) {
+  if (over || dropping) return;
+  if (isColFull(col)) return;
+
+  // Encontrar la fila más baja vacía
+  let row = -1;
+  for (let r = ROWS_-1; r >= 0; r--) {
+    if (!board[r][col]) { row = r; break; }
+  }
+  if (row === -1) return;
+
+  const player = current;
+  board[row][col] = player;
+
+  // Animación de caída
+  dropping = true;
+  const cell = cells[row * COLS + col];
+  cell.classList.remove('red','yellow');
+  cell.classList.add(colorOf(player));
+  cell.style.setProperty('--drop-from', row + 1);
+  cell.style.setProperty('--drop-duration', `${0.18 + (row+1) * 0.05}s`);
+  cell.classList.add('dropping');
+
+  // Esconde el holograma mientras cae
+  hologramCells[col].classList.remove('preview','red','yellow');
+
+  const animMs = (0.18 + (row+1) * 0.05) * 1000 + 30;
+  setTimeout(() => {
+    cell.classList.remove('dropping');
+    cell.style.removeProperty('--drop-from');
+    cell.style.removeProperty('--drop-duration');
+
+    // ¿Hay ganador?
+    const winLine = checkWin(row, col, player);
+    if (winLine) {
+      over = true;
+      dropping = false;
+      scores[player]++;
+      localStorage.setItem('c4-scores', JSON.stringify(scores));
+      updateScores();
+      winLine.forEach(([r,c]) => cells[r*COLS + c].classList.add('winning'));
+      setTimeout(() => {
+        const ol = document.getElementById('overlay');
+        const h1 = ol.querySelector('h1');
+        h1.textContent = `¡${nameOf(player)} GANA!`;
+        h1.className = 'winner-' + colorOf(player);
+        document.getElementById('overlay-sub').textContent =
+          `Rojo ${scores.R} · Amarillo ${scores.Y} · Empates ${scores.D}`;
+        document.getElementById('start-btn').textContent = '▶ JUGAR DE NUEVO';
+        ol.classList.remove('hidden');
+      }, 800);
+      return;
+    }
+
+    // ¿Empate?
+    if (board[0].every(c => c !== null)) {
+      over = true;
+      dropping = false;
+      scores.D++;
+      localStorage.setItem('c4-scores', JSON.stringify(scores));
+      updateScores();
+      setTimeout(() => {
+        const ol = document.getElementById('overlay');
+        ol.querySelector('h1').textContent = 'EMPATE';
+        ol.querySelector('h1').className = '';
+        document.getElementById('overlay-sub').textContent =
+          `Rojo ${scores.R} · Amarillo ${scores.Y} · Empates ${scores.D}`;
+        document.getElementById('start-btn').textContent = '▶ JUGAR DE NUEVO';
+        ol.classList.remove('hidden');
+      }, 500);
+      return;
+    }
+
+    // Cambiar turno
+    current = current === 'R' ? 'Y' : 'R';
+    dropping = false;
+    render();
+  }, animMs);
+}
+
+// Teclado
+document.addEventListener('keydown', e => {
+  if (e.code === 'KeyR') {
+    e.preventDefault();
+    scores = { R:0, Y:0, D:0 };
+    localStorage.setItem('c4-scores', JSON.stringify(scores));
+    updateScores();
+    return;
+  }
+  if (over || dropping) return;
+  if (!document.getElementById('overlay').classList.contains('hidden')) return;
+
+  switch (e.code) {
+    case 'ArrowLeft':  e.preventDefault();
+      if (cursor > 0) cursor--;
+      // Saltar columnas llenas a la izquierda
+      while (isColFull(cursor) && cursor > 0) cursor--;
+      break;
+    case 'ArrowRight': e.preventDefault();
+      if (cursor < COLS-1) cursor++;
+      while (isColFull(cursor) && cursor < COLS-1) cursor++;
+      break;
+    case 'ArrowDown':
+    case 'Enter':
+    case 'Space':      e.preventDefault(); drop(cursor); return;
+    default: return;
+  }
+  render();
+});
+
+// Touch / click — apunta a una columna y suelta de inmediato
+function attachColumnHandlers(elements, action) {
+  elements.forEach((el, idx) => {
+    const col = idx % COLS;
+    el.addEventListener('click', () => {
+      if (over || dropping) return;
+      if (!document.getElementById('overlay').classList.contains('hidden')) return;
+      cursor = col;
+      render();
+      action(col);
+    });
+    el.addEventListener('mouseenter', () => {
+      if (over || dropping) return;
+      if (!document.getElementById('overlay').classList.contains('hidden')) return;
+      cursor = col;
+      render();
+    });
+  });
+}
+attachColumnHandlers(hologramCells, drop);
+attachColumnHandlers(cells, drop);
+
+document.getElementById('start-btn').addEventListener('click', () => {
+  document.getElementById('overlay').classList.add('hidden');
+  document.getElementById('overlay').querySelector('h1').className = '';
+  init();
+});
+</script>
+</body>
+</html>

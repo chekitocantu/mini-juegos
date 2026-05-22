@@ -204,6 +204,7 @@
     .card[data-game="breakout"] .card-preview { background: linear-gradient(135deg, #2b0d1a, #4a0a20); }
     .card[data-game="2048"]     .card-preview { background: linear-gradient(135deg, #2b1a00, #4a2d00); }
     .card[data-game="tres-en-raya"] .card-preview { background: linear-gradient(135deg, #2a1505, #4a2810); }
+    .card[data-game="conecta-4"]    .card-preview { background: linear-gradient(135deg, #1a2b4a, #14284a); }
 
     .card-preview .emoji { position: relative; z-index: 1; filter: drop-shadow(0 4px 16px #0008); }
 
@@ -401,7 +402,7 @@
   <h1>Juega desde<br>el <em>navegador</em></h1>
   <p>Sin instalaciones, sin cuentas. Solo abre y juega. Todo el código es libre y público.</p>
   <div class="hero-stats">
-    <div class="stat"><div class="stat-n">5</div><div class="stat-l">Juegos activos</div></div>
+    <div class="stat"><div class="stat-n">6</div><div class="stat-l">Juegos activos</div></div>
     <div class="stat"><div class="stat-n">0ms</div><div class="stat-l">Para cargar</div></div>
     <div class="stat"><div class="stat-n">100%</div><div class="stat-l">Open source</div></div>
   </div>
@@ -501,6 +502,24 @@
       <div class="card-body">
         <div class="card-name">Tres en raya</div>
         <div class="card-desc">El clásico tic-tac-toe. Dos jugadores se turnan en un tablero 3x3 hasta que alguien forma tres en línea.</div>
+        <div class="card-tags">
+          <span class="tag">Estrategia</span>
+          <span class="tag">2 jugadores</span>
+          <span class="tag">Local</span>
+        </div>
+        <span class="play-btn">▶ Jugar ahora</span>
+      </div>
+    </a>
+
+    <!-- CONECTA 4 -->
+    <a class="card" data-game="conecta-4" href="conecta-4/">
+      <div class="card-preview">
+        <span class="emoji">🔴</span>
+        <span class="live-badge">EN VIVO</span>
+      </div>
+      <div class="card-body">
+        <div class="card-name">Conecta 4</div>
+        <div class="card-desc">Suelta discos rojos y amarillos. Forma una línea de 4 en cualquier dirección antes que tu rival.</div>
         <div class="card-tags">
           <span class="tag">Estrategia</span>
           <span class="tag">2 jugadores</span>
