@@ -117,13 +117,25 @@
     }
     #overlay h1 { font-size:40px; letter-spacing:6px; color:#fff; text-shadow:0 0 20px #eab308; }
     #overlay p  { color:#aaa; font-size:13px; text-align:center; line-height:1.8; }
-    #overlay button {
-      padding:12px 36px; font-size:15px; font-family:inherit;
-      background:#ca8a04; color:#fff; font-weight:bold;
-      border:none; border-radius:6px; cursor:pointer;
-      letter-spacing:2px; transition:background .2s;
+    .menu-actions {
+      display:flex; flex-direction:column; gap:8px;
+      width:240px; margin-top:6px;
     }
-    #overlay button:hover { background:#f59e0b; }
+    .btn-primary, .btn-secondary {
+      padding:12px 24px; font-size:15px; font-family:inherit;
+      border-radius:8px; cursor:pointer;
+      letter-spacing:2px; font-weight:bold;
+      text-align:center; text-decoration:none;
+      display:block; transition:all .2s;
+    }
+    .btn-primary { background:#ca8a04; color:#fff; border:none; }
+    .btn-primary:hover { background:#f59e0b; }
+    .btn-secondary {
+      background:transparent; color:#888;
+      border:1px solid #4a4a8a;
+      font-size:12px; font-weight:normal; letter-spacing:1px;
+    }
+    .btn-secondary:hover { background:#16213e; color:#aaa; }
     .hidden { display:none !important; }
 
     #mute-btn {
@@ -140,7 +152,10 @@
 <div id="overlay">
   <h1>2048</h1>
   <p>← → ↑ ↓  para deslizar · Swipe en móvil<br>Combina fichas iguales para llegar al <strong style="color:#f59e0b">2048</strong></p>
-  <button id="start-btn">JUGAR</button>
+  <div class="menu-actions">
+    <button id="start-btn" class="btn-primary">▶ JUGAR</button>
+    <a class="btn-secondary" href="../">← Volver al inicio</a>
+  </div>
 </div>
 
 <a class="back-home" href="../">← BrowserLab</a>
@@ -318,10 +333,10 @@ function move(dir) {
 
   if (!won && board.some(row => row.some(v => v === 2048))) {
     won = true;
-    setTimeout(() => showOverlay('¡LO LOGRASTE!', '¡Llegaste al 2048! Puedes seguir jugando.', 'CONTINUAR'), 300);
+    setTimeout(() => showOverlay('¡LO LOGRASTE!', '¡Llegaste al 2048! Puedes seguir jugando.', '▶ CONTINUAR'), 300);
   } else if (isGameOver()) {
     stopMusic();
-    setTimeout(() => showOverlay('GAME OVER', `Puntuación final: ${score}`, 'REINTENTAR'), 300);
+    setTimeout(() => showOverlay('GAME OVER', `Puntuación final: ${score}`, '▶ JUGAR DE NUEVO'), 300);
   }
 }
 
@@ -360,7 +375,7 @@ function showOverlay(title, msg, btn) {
   const ol = document.getElementById('overlay');
   ol.querySelector('h1').textContent     = title;
   ol.querySelector('p').textContent      = msg;
-  ol.querySelector('button').textContent = btn;
+  ol.querySelector('#start-btn').textContent = btn;
   ol.classList.remove('hidden');
 }
 

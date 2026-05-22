@@ -9,9 +9,12 @@
     body {
       background: #1a1a2e;
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
       min-height: 100vh;
+      padding: 70px 20px 20px;
+      gap: 16px;
       font-family: 'Courier New', monospace;
       color: #eee;
     }
@@ -90,26 +93,126 @@
       text-shadow: 0 0 20px #8888ff;
     }
 
-    #overlay p {
-      color: #aaa;
-      font-size: 14px;
+    #overlay .overlay-sub {
+      color: #888;
+      font-size: 13px;
+      margin-bottom: 4px;
+      text-align: center;
     }
 
-    #overlay button {
-      margin-top: 8px;
-      padding: 12px 36px;
-      font-size: 16px;
+    .menu-section {
+      background: #16213e88;
+      border: 1px solid #4a4a8a44;
+      border-radius: 10px;
+      padding: 14px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-width: 240px;
+    }
+    .menu-label {
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: #8888cc;
+      text-transform: uppercase;
+      text-align: center;
+    }
+    .toggle-group {
+      display: flex;
+      gap: 8px;
+    }
+    .toggle-btn {
+      flex: 1;
+      padding: 10px 14px;
+      font-size: 13px;
       font-family: inherit;
+      background: #1a1a3e;
+      border: 1px solid #4a4a8a;
+      color: #8888cc;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all .2s;
+      letter-spacing: 1px;
+    }
+    .toggle-btn:hover { background: #2a2a5a; color: #aaaaee; }
+    .toggle-btn.active {
+      background: #7c5cfc;
+      color: #fff;
+      border-color: #a080ff;
+    }
+
+    .menu-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: 240px;
+      margin-top: 6px;
+    }
+    .btn-primary, .btn-secondary {
+      padding: 12px 24px;
+      font-size: 15px;
+      font-family: inherit;
+      border-radius: 8px;
+      cursor: pointer;
+      letter-spacing: 2px;
+      font-weight: bold;
+      text-align: center;
+      transition: all .2s;
+      text-decoration: none;
+      display: block;
+    }
+    .btn-primary {
       background: #4a4a8a;
       color: #fff;
       border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      letter-spacing: 2px;
-      transition: background 0.2s;
     }
+    .btn-primary:hover { background: #6666bb; }
+    .btn-secondary {
+      background: transparent;
+      color: #888;
+      border: 1px solid #4a4a8a;
+      font-size: 12px;
+      font-weight: normal;
+      letter-spacing: 1px;
+    }
+    .btn-secondary:hover { background: #16213e; color: #aaa; }
 
-    #overlay button:hover { background: #6666bb; }
+    /* Touch controls */
+    #touch-controls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      width: 280px;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+    .touch-row { display: flex; gap: 8px; }
+    .touch-btn {
+      width: 75px; height: 65px;
+      font-size: 26px;
+      background: #16213e;
+      border: 2px solid #4a4a8a;
+      color: #aaaaee;
+      border-radius: 12px;
+      cursor: pointer;
+      font-family: inherit;
+      touch-action: manipulation;
+      transition: background .1s, transform .05s;
+    }
+    .touch-btn:active {
+      background: #4a4a8a;
+      color: #fff;
+      transform: scale(0.96);
+    }
+    .drop-btn {
+      width: 100%;
+      height: 48px;
+      font-size: 13px;
+      font-weight: bold;
+      letter-spacing: 2px;
+    }
 
     .hidden { display: none !important; }
 
@@ -151,9 +254,20 @@
 
 <div id="overlay">
   <h1>TETRIS</h1>
-  <p>Usa las flechas para mover · Arriba para rotar</p>
-  <p>Espacio para caída rápida · ESC para pausar</p>
-  <button id="start-btn">JUGAR</button>
+  <p class="overlay-sub" id="overlay-sub">Encaja las piezas y completa líneas</p>
+
+  <div class="menu-section">
+    <div class="menu-label">Modo de control</div>
+    <div class="toggle-group">
+      <button class="toggle-btn" data-mode="keyboard">⌨ Teclado</button>
+      <button class="toggle-btn" data-mode="touch">👆 Touch</button>
+    </div>
+  </div>
+
+  <div class="menu-actions">
+    <button id="start-btn" class="btn-primary">▶ JUGAR</button>
+    <a class="btn-secondary" href="../">← Volver al inicio</a>
+  </div>
 </div>
 
 <div id="game-wrapper">
@@ -186,6 +300,16 @@
     </div>
     <button id="mute-btn" onclick="toggleMute()">🔊</button>
   </div>
+</div>
+
+<div id="touch-controls" class="hidden">
+  <button id="t-rotate" class="touch-btn rotate-btn">↻</button>
+  <div class="touch-row">
+    <button id="t-left"  class="touch-btn">◀</button>
+    <button id="t-down"  class="touch-btn">▼</button>
+    <button id="t-right" class="touch-btn">▶</button>
+  </div>
+  <button id="t-drop" class="touch-btn drop-btn">⏬ CAÍDA</button>
 </div>
 
 <script>
@@ -545,8 +669,8 @@ function startGame() {
 function showOverlay(title, sub) {
   const ol = document.getElementById('overlay');
   ol.querySelector('h1').textContent = title;
-  ol.querySelector('p:nth-of-type(1)').textContent = sub;
-  ol.querySelector('p:nth-of-type(2)').textContent = '';
+  document.getElementById('overlay-sub').textContent = sub;
+  document.getElementById('start-btn').textContent = '▶ JUGAR DE NUEVO';
   ol.classList.remove('hidden');
 }
 
@@ -597,6 +721,82 @@ document.addEventListener('keydown', e => {
   }
   updateHUD();
 });
+
+// ─── ACCIONES (compartidas teclado/touch) ──────────────────
+function actMoveLeft()  { if (paused || gameOver) return; if (fits(piece.shape, piece.x - 1, piece.y)) piece.x--; updateHUD(); }
+function actMoveRight() { if (paused || gameOver) return; if (fits(piece.shape, piece.x + 1, piece.y)) piece.x++; updateHUD(); }
+function actSoftDrop()  {
+  if (paused || gameOver) return;
+  if (fits(piece.shape, piece.x, piece.y + 1)) { piece.y++; score++; }
+  else lock();
+  updateHUD();
+}
+function actRotate() {
+  if (paused || gameOver) return;
+  const rot = rotate(piece.shape);
+  if (fits(rot, piece.x, piece.y)) piece.shape = rot;
+  else if (fits(rot, piece.x - 1, piece.y)) { piece.shape = rot; piece.x--; }
+  else if (fits(rot, piece.x + 1, piece.y)) { piece.shape = rot; piece.x++; }
+  updateHUD();
+}
+function actHardDrop() {
+  if (paused || gameOver) return;
+  while (fits(piece.shape, piece.x, piece.y + 1)) { piece.y++; score += 2; }
+  lock();
+  updateHUD();
+}
+
+// ─── TOGGLE TECLADO / TOUCH ────────────────────────────────
+let controlMode = localStorage.getItem('tetris-control') || 'keyboard';
+
+function applyControlMode() {
+  document.querySelectorAll('.toggle-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.mode === controlMode);
+  });
+  document.getElementById('touch-controls').classList.toggle('hidden', controlMode !== 'touch');
+}
+
+document.querySelectorAll('.toggle-btn').forEach(b => {
+  b.addEventListener('click', () => {
+    controlMode = b.dataset.mode;
+    localStorage.setItem('tetris-control', controlMode);
+    applyControlMode();
+  });
+});
+
+applyControlMode();
+
+// ─── BOTONES TOUCH ─────────────────────────────────────────
+function setupHoldBtn(id, fn, repeat) {
+  const btn = document.getElementById(id);
+  let timeoutId, intervalId;
+  const start = (e) => {
+    e.preventDefault();
+    fn();
+    if (repeat) {
+      timeoutId = setTimeout(() => { intervalId = setInterval(fn, 80); }, 180);
+    }
+  };
+  const end = (e) => {
+    if (e) e.preventDefault();
+    clearTimeout(timeoutId);
+    clearInterval(intervalId);
+  };
+  btn.addEventListener('touchstart', start, { passive: false });
+  btn.addEventListener('touchend',   end);
+  btn.addEventListener('touchcancel', end);
+  btn.addEventListener('mousedown',  start);
+  btn.addEventListener('mouseup',    end);
+  btn.addEventListener('mouseleave', end);
+  // Prevent context menu on long press
+  btn.addEventListener('contextmenu', e => e.preventDefault());
+}
+
+setupHoldBtn('t-left',   actMoveLeft,  true);
+setupHoldBtn('t-right',  actMoveRight, true);
+setupHoldBtn('t-down',   actSoftDrop,  true);
+setupHoldBtn('t-rotate', actRotate,    false);
+setupHoldBtn('t-drop',   actHardDrop,  false);
 </script>
 </body>
 </html>
