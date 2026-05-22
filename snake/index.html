@@ -58,6 +58,14 @@
     }
     #overlay button:hover { background:#00ff55; }
     .hidden { display:none !important; }
+
+    #mute-btn {
+      padding:4px 10px; font-size:16px;
+      background:#16213e; border:1px solid #4a4a8a;
+      border-radius:6px; color:#aaaaee; cursor:pointer;
+      font-family:inherit; transition:background .2s;
+    }
+    #mute-btn:hover { background:#2a2a5a; }
   </style>
 </head>
 <body>
@@ -73,7 +81,7 @@
 <div id="topbar">
   <span></span>
   <span id="game-label">SNAKE</span>
-  <span></span>
+  <button id="mute-btn" onclick="toggleMute()">🔊</button>
 </div>
 
 <div id="hud">
@@ -86,6 +94,81 @@
 <div id="hint">↑ ↓ ← →  para moverse</div>
 
 <script>
+// ─── AUDIO: "En la gruta del rey de la montaña" (Grieg, 1875 - dominio público)
+const BPM = 140, BS = 60/BPM;
+const NF = {
+  'B3':246.94,'F#3':184.99,
+  'B4':493.88,'C#5':554.37,'D5':587.33,'E5':659.25,'F#5':739.99,'G5':783.99,'B5':987.77,
+};
+const MELODY = [
+  ['B4',.5],['C#5',.5],['D5',.5],['E5',.5],['D5',.5],['F#5',.5],['E5',1],
+  ['B4',.5],['C#5',.5],['D5',.5],['E5',.5],['D5',.5],['F#5',.5],['E5',1],
+  ['B4',.5],['C#5',.5],['D5',.5],['E5',.5],['D5',.5],['F#5',.5],['E5',.5],['D5',.5],
+  ['G5',.5],['F#5',.5],['D5',.5],['F#5',.5],['B5',2],
+];
+const BASS = [
+  ['B3',2],['F#3',2],['B3',2],['F#3',2],
+  ['B3',2],['F#3',2],['B3',2],['F#3',2],
+];
+let audioCtx, masterGain, loopTimer, loopStart;
+let muted = localStorage.getItem('audio-muted') === 'true';
+
+function ensureAudio() {
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = muted ? 0 : 0.5;
+  masterGain.connect(audioCtx.destination);
+}
+function scheduleNote(freq, t, dur, type, vol) {
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.connect(g); g.connect(masterGain);
+  o.type = type; o.frequency.value = freq;
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(vol, t + 0.008);
+  g.gain.setValueAtTime(vol, t + dur * 0.8);
+  g.gain.linearRampToValueAtTime(0, t + dur * 0.97);
+  o.start(t); o.stop(t + dur);
+}
+function scheduleLoop(startAt) {
+  let total = 0;
+  MELODY.forEach(([,b]) => total += b);
+  let mt = startAt;
+  MELODY.forEach(([n,b]) => {
+    if (n && NF[n]) scheduleNote(NF[n], mt, b*BS*0.92, 'square', 0.10);
+    mt += b*BS;
+  });
+  let bt = startAt;
+  BASS.forEach(([n,b]) => {
+    if (n && NF[n]) scheduleNote(NF[n], bt, b*BS*0.88, 'triangle', 0.16);
+    bt += b*BS;
+  });
+  return startAt + total*BS;
+}
+function startMusic() {
+  ensureAudio();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  clearTimeout(loopTimer);
+  masterGain.gain.value = muted ? 0 : 0.5;
+  loopStart = audioCtx.currentTime + 0.05;
+  function loop() {
+    loopStart = scheduleLoop(loopStart);
+    const wait = (loopStart - audioCtx.currentTime - 0.4) * 1000;
+    loopTimer = setTimeout(loop, Math.max(50, wait));
+  }
+  loop();
+}
+function stopMusic() { clearTimeout(loopTimer); loopTimer = null; }
+function toggleMute() {
+  muted = !muted;
+  localStorage.setItem('audio-muted', muted);
+  document.getElementById('mute-btn').textContent = muted ? '🔇' : '🔊';
+  if (masterGain) masterGain.gain.value = muted ? 0 : 0.5;
+}
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('mute-btn').textContent = muted ? '🔇' : '🔊';
+});
+
 const GRID = 20, CELL = 20;
 const canvas = document.getElementById('board');
 const ctx    = canvas.getContext('2d');
@@ -203,6 +286,7 @@ function updateHUD() {
 
 function endGame() {
   clearInterval(loopId);
+  stopMusic();
   over = true;
   if (score > best) { best = score; localStorage.setItem('snake-best', best); }
   document.getElementById('best').textContent = best;
@@ -219,6 +303,7 @@ function startGame() {
   clearInterval(loopId);
   loopId = setInterval(step, speed);
   draw();
+  startMusic();
 }
 
 // ── CONTROLS ──────────────────────────────────────────

@@ -125,6 +125,14 @@
     }
     #overlay button:hover { background:#f59e0b; }
     .hidden { display:none !important; }
+
+    #mute-btn {
+      padding:7px 12px; font-size:16px;
+      background:#2a2a5a; border:1px solid #4a4a8a;
+      border-radius:6px; color:#aaa; cursor:pointer;
+      font-family:inherit; transition:background .2s, color .2s;
+    }
+    #mute-btn:hover { background:#3a3a7a; color:#fff; }
   </style>
 </head>
 <body>
@@ -138,7 +146,7 @@
 <a class="back-home" href="../">← BrowserLab</a>
 
 <div id="topbar">
-  <span></span>
+  <button id="mute-btn" onclick="toggleMute()">🔊</button>
   <span id="game-label">2048</span>
   <button id="new-btn">Nueva partida</button>
 </div>
@@ -154,6 +162,90 @@
 <div id="hint">↑ ↓ ← →  /  Swipe para deslizar</div>
 
 <script>
+// ─── AUDIO: "Gymnopédie No. 1" (Erik Satie, 1888 - dominio público)
+const BPM = 72, BS = 60/BPM;
+const NF = {
+  'G2':97.999,'D3':146.83,'A3':220.00,
+  'D4':293.66,'F#4':369.99,'A4':440.00,'B4':493.88,
+  'C#5':554.37,'D5':587.33,'E5':659.25,'F#5':739.99,'G5':783.99,
+};
+// Melodía: tres pulsos en blanco, luego entra (3/4 = 3 beats por compás)
+const MELODY = [
+  [null,6],
+  ['F#5',3],['F#5',3],
+  ['E5',1.5],['D5',1.5],['C#5',1.5],['D5',1.5],
+  ['E5',3],['F#5',3],
+  ['G5',1.5],['F#5',1.5],['E5',1.5],['D5',1.5],
+  ['C#5',3],['D5',3],
+];
+// Bajo arpegiado característico de la Gymnopédie (G - chord - chord)
+const BASS = [
+  ['G2',1],['D4',1],['B4',1],  ['G2',1],['D4',1],['B4',1],
+  ['G2',1],['D4',1],['B4',1],  ['G2',1],['D4',1],['B4',1],
+  ['D3',1],['A3',1],['F#4',1], ['D3',1],['A3',1],['F#4',1],
+  ['D3',1],['A3',1],['F#4',1], ['D3',1],['A3',1],['F#4',1],
+  ['G2',1],['D4',1],['B4',1],  ['G2',1],['D4',1],['B4',1],
+  ['D3',1],['A3',1],['F#4',1], ['D3',1],['A3',1],['F#4',1],
+];
+let audioCtx, masterGain, loopTimer, loopStart;
+let muted = localStorage.getItem('audio-muted') === 'true';
+
+function ensureAudio() {
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = muted ? 0 : 0.45;
+  masterGain.connect(audioCtx.destination);
+}
+function scheduleNote(freq, t, dur, type, vol) {
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.connect(g); g.connect(masterGain);
+  o.type = type; o.frequency.value = freq;
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(vol, t + 0.15); // ataque lento (calma)
+  g.gain.setValueAtTime(vol, t + dur * 0.65);
+  g.gain.linearRampToValueAtTime(0, t + dur * 0.98);
+  o.start(t); o.stop(t + dur);
+}
+function scheduleLoop(startAt) {
+  let total = 0;
+  MELODY.forEach(([,b]) => total += b);
+  let mt = startAt;
+  MELODY.forEach(([n,b]) => {
+    if (n && NF[n]) scheduleNote(NF[n], mt, b*BS*0.95, 'triangle', 0.13);
+    mt += b*BS;
+  });
+  let bt = startAt;
+  BASS.forEach(([n,b]) => {
+    if (n && NF[n]) scheduleNote(NF[n], bt, b*BS*0.9, 'sine', 0.20);
+    bt += b*BS;
+  });
+  return startAt + total*BS;
+}
+function startMusic() {
+  ensureAudio();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  clearTimeout(loopTimer);
+  masterGain.gain.value = muted ? 0 : 0.45;
+  loopStart = audioCtx.currentTime + 0.05;
+  function loop() {
+    loopStart = scheduleLoop(loopStart);
+    const wait = (loopStart - audioCtx.currentTime - 0.4) * 1000;
+    loopTimer = setTimeout(loop, Math.max(50, wait));
+  }
+  loop();
+}
+function stopMusic() { clearTimeout(loopTimer); loopTimer = null; }
+function toggleMute() {
+  muted = !muted;
+  localStorage.setItem('audio-muted', muted);
+  document.getElementById('mute-btn').textContent = muted ? '🔇' : '🔊';
+  if (masterGain) masterGain.gain.value = muted ? 0 : 0.45;
+}
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('mute-btn').textContent = muted ? '🔇' : '🔊';
+});
+
 // ── STATE ─────────────────────────────────────────────
 let board, score, won;
 let best = +localStorage.getItem('2048-best') || 0;
@@ -228,6 +320,7 @@ function move(dir) {
     won = true;
     setTimeout(() => showOverlay('¡LO LOGRASTE!', '¡Llegaste al 2048! Puedes seguir jugando.', 'CONTINUAR'), 300);
   } else if (isGameOver()) {
+    stopMusic();
     setTimeout(() => showOverlay('GAME OVER', `Puntuación final: ${score}`, 'REINTENTAR'), 300);
   }
 }
@@ -296,10 +389,12 @@ document.addEventListener('touchend', e => {
 document.getElementById('start-btn').addEventListener('click', () => {
   document.getElementById('overlay').classList.add('hidden');
   newBoard();
+  startMusic();
 });
 document.getElementById('new-btn').addEventListener('click', () => {
   document.getElementById('overlay').classList.add('hidden');
   newBoard();
+  startMusic();
 });
 </script>
 </body>
