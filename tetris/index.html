@@ -9,12 +9,9 @@
     body {
       background: #1a1a2e;
       display: flex;
-      flex-direction: column;
       justify-content: center;
       align-items: center;
       min-height: 100vh;
-      padding: 70px 20px 20px;
-      gap: 16px;
       font-family: 'Courier New', monospace;
       color: #eee;
     }
@@ -177,21 +174,22 @@
     }
     .btn-secondary:hover { background: #16213e; color: #aaa; }
 
-    /* Touch controls */
+    /* Touch controls — al lado izquierdo del tablero */
     #touch-controls {
       display: flex;
       flex-direction: column;
+      align-self: center;       /* centrado verticalmente con el canvas */
       align-items: center;
-      gap: 8px;
-      width: 280px;
+      gap: 10px;
+      width: 210px;
       user-select: none;
       -webkit-user-select: none;
       -webkit-touch-callout: none;
     }
     .touch-row { display: flex; gap: 8px; }
     .touch-btn {
-      width: 75px; height: 65px;
-      font-size: 26px;
+      width: 62px; height: 62px;
+      font-size: 24px;
       background: #16213e;
       border: 2px solid #4a4a8a;
       color: #aaaaee;
@@ -204,14 +202,22 @@
     .touch-btn:active {
       background: #4a4a8a;
       color: #fff;
-      transform: scale(0.96);
+      transform: scale(0.94);
     }
     .drop-btn {
       width: 100%;
-      height: 48px;
-      font-size: 13px;
+      height: 46px;
+      font-size: 12px;
       font-weight: bold;
       letter-spacing: 2px;
+    }
+    .rotate-btn { width: 100%; }
+
+    /* En pantallas estrechas (móvil): touch-controls debajo del tablero */
+    @media (max-width: 780px) {
+      #game-wrapper { flex-wrap: wrap; justify-content: center; }
+      #touch-controls { order: 99; width: 280px; }
+      .touch-btn { width: 75px; height: 65px; font-size: 26px; }
     }
 
     .hidden { display: none !important; }
@@ -271,6 +277,16 @@
 </div>
 
 <div id="game-wrapper">
+  <div id="touch-controls" class="hidden">
+    <button id="t-rotate" class="touch-btn rotate-btn">↻</button>
+    <div class="touch-row">
+      <button id="t-left"  class="touch-btn">◀</button>
+      <button id="t-down"  class="touch-btn">▼</button>
+      <button id="t-right" class="touch-btn">▶</button>
+    </div>
+    <button id="t-drop" class="touch-btn drop-btn">⏬ CAÍDA</button>
+  </div>
+
   <canvas id="board" width="300" height="600"></canvas>
 
   <div id="sidebar">
@@ -300,16 +316,6 @@
     </div>
     <button id="mute-btn" onclick="toggleMute()">🔊</button>
   </div>
-</div>
-
-<div id="touch-controls" class="hidden">
-  <button id="t-rotate" class="touch-btn rotate-btn">↻</button>
-  <div class="touch-row">
-    <button id="t-left"  class="touch-btn">◀</button>
-    <button id="t-down"  class="touch-btn">▼</button>
-    <button id="t-right" class="touch-btn">▶</button>
-  </div>
-  <button id="t-drop" class="touch-btn drop-btn">⏬ CAÍDA</button>
 </div>
 
 <script>
