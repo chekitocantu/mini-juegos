@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Snake — BrowserLab</title>
+  <style>
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      background:#1a1a2e; color:#eee;
+      font-family:'Courier New',monospace;
+      display:flex; flex-direction:column; align-items:center;
+      justify-content:center; min-height:100vh; gap:10px;
+    }
+    #topbar {
+      width:400px; display:flex;
+      justify-content:space-between; align-items:center;
+    }
+    .back { color:#8888cc; text-decoration:none; font-size:13px; transition:color .2s; }
+    .back:hover { color:#aaaaee; }
+    #game-label { font-size:13px; letter-spacing:3px; color:#00cf33; font-weight:bold; }
+    #hud {
+      width:400px; display:flex; gap:8px;
+    }
+    .panel {
+      flex:1; background:#16213e; border:1px solid #4a4a8a;
+      border-radius:6px; padding:6px 10px; text-align:center;
+    }
+    .panel h3 { font-size:9px; letter-spacing:2px; text-transform:uppercase; color:#8888cc; margin-bottom:2px; }
+    .panel .val { font-size:20px; font-weight:bold; color:#fff; }
+    canvas { border:2px solid #4a4a8a; box-shadow:0 0 30px #4a4a8a88; display:block; }
+    #hint { font-size:11px; color:#555; margin-top:4px; }
+
+    #overlay {
+      position:fixed; inset:0; background:#000a;
+      display:flex; flex-direction:column;
+      justify-content:center; align-items:center; gap:14px; z-index:10;
+    }
+    #overlay h1 { font-size:42px; letter-spacing:6px; color:#fff; text-shadow:0 0 20px #00ff88; }
+    #overlay p  { color:#aaa; font-size:13px; text-align:center; line-height:1.8; }
+    #overlay button {
+      padding:12px 36px; font-size:15px; font-family:inherit;
+      background:#00cf33; color:#000; font-weight:bold;
+      border:none; border-radius:6px; cursor:pointer;
+      letter-spacing:2px; transition:background .2s;
+    }
+    #overlay button:hover { background:#00ff55; }
+    .hidden { display:none !important; }
+  </style>
+</head>
+<body>
+
+<div id="overlay">
+  <h1>SNAKE</h1>
+  <p>← → ↑ ↓  para moverse<br>Swipe en móvil · Come la manzana · No choques</p>
+  <button id="start-btn">JUGAR</button>
+</div>
+
+<div id="topbar">
+  <a class="back" href="../">← BrowserLab</a>
+  <span id="game-label">SNAKE</span>
+  <span></span>
+</div>
+
+<div id="hud">
+  <div class="panel"><h3>Puntos</h3><div class="val" id="score">0</div></div>
+  <div class="panel"><h3>Nivel</h3><div class="val" id="level">1</div></div>
+  <div class="panel"><h3>Mejor</h3><div class="val" id="best">0</div></div>
+</div>
+
+<canvas id="board" width="400" height="400"></canvas>
+<div id="hint">↑ ↓ ← →  para moverse</div>
+
+<script>
+const GRID = 20, CELL = 20;
+const canvas = document.getElementById('board');
+const ctx    = canvas.getContext('2d');
+
+let snake, dir, dirQueue, food, score, level, speed, loopId, over;
+let best = +localStorage.getItem('snake-best') || 0;
+document.getElementById('best').textContent = best;
+
+// ── INIT ──────────────────────────────────────────────
+function init() {
+  snake    = [{x:10,y:10},{x:9,y:10},{x:8,y:10}];
+  dir      = {x:1, y:0};
+  dirQueue = [];
+  food     = spawnFood();
+  score    = 0; level = 1; speed = 145; over = false;
+  updateHUD();
+}
+
+function spawnFood() {
+  let p;
+  do { p = {x: Math.floor(Math.random()*GRID), y: Math.floor(Math.random()*GRID)}; }
+  while (snake.some(s => s.x===p.x && s.y===p.y));
+  return p;
+}
+
+// ── GAME STEP ─────────────────────────────────────────
+function step() {
+  if (dirQueue.length) dir = dirQueue.shift();
+
+  const head = {x: snake[0].x + dir.x, y: snake[0].y + dir.y};
+
+  // Wall / self collision
+  if (head.x<0 || head.x>=GRID || head.y<0 || head.y>=GRID ||
+      snake.some(s => s.x===head.x && s.y===head.y)) {
+    endGame(); return;
+  }
+
+  snake.unshift(head);
+
+  if (head.x === food.x && head.y === food.y) {
+    score += level * 10;
+    const nl = Math.floor(score / 50) + 1;
+    if (nl > level) {
+      level = nl;
+      speed = Math.max(65, 145 - (level-1) * 13);
+      clearInterval(loopId);
+      loopId = setInterval(step, speed);
+    }
+    food = spawnFood();
+    updateHUD();
+  } else {
+    snake.pop();
+  }
+  draw();
+}
+
+// ── DRAW ──────────────────────────────────────────────
+const tick = () => Math.sin(Date.now() / 220);
+
+function draw() {
+  ctx.fillStyle = '#0d0d1a';
+  ctx.fillRect(0, 0, 400, 400);
+
+  // Grid lines
+  ctx.strokeStyle = '#13132a'; ctx.lineWidth = 0.5;
+  for (let i = 0; i <= GRID; i++) {
+    ctx.beginPath(); ctx.moveTo(i*CELL,0); ctx.lineTo(i*CELL,400); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,i*CELL); ctx.lineTo(400,i*CELL); ctx.stroke();
+  }
+
+  // Food (pulsing glow)
+  const p = 0.5 + tick() * 0.5;
+  ctx.shadowColor = '#ff4444'; ctx.shadowBlur = 10 + p * 8;
+  ctx.fillStyle = `hsl(${p*30}, 90%, ${50 + p*12}%)`;
+  ctx.beginPath();
+  ctx.arc(food.x*CELL+CELL/2, food.y*CELL+CELL/2, CELL/2 - 2 + p, 0, Math.PI*2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Shine on food
+  ctx.fillStyle = '#ffffff55';
+  ctx.beginPath();
+  ctx.arc(food.x*CELL+CELL/2-3, food.y*CELL+CELL/2-3, 3, 0, Math.PI*2);
+  ctx.fill();
+
+  // Snake body
+  snake.forEach((s, i) => {
+    const t = i / snake.length;
+    ctx.fillStyle = i === 0
+      ? '#00ff66'
+      : `rgb(${Math.round(t*20)}, ${Math.round(200 - t*110)}, ${Math.round(80 + t*50)})`;
+    ctx.fillRect(s.x*CELL+1, s.y*CELL+1, CELL-2, CELL-2);
+    if (i === 0) { // head highlight
+      ctx.fillStyle = '#ffffff33';
+      ctx.fillRect(s.x*CELL+1, s.y*CELL+1, CELL-2, 3);
+    }
+  });
+
+  // Eyes
+  const h = snake[0];
+  ctx.fillStyle = '#003300';
+  const [ex1,ey1, ex2,ey2] =
+    dir.x===1  ? [13,4, 13,13] :
+    dir.x===-1 ? [4,4,  4,13]  :
+    dir.y===-1 ? [4,4, 13,4]   :
+                 [4,13, 13,13];
+  ctx.fillRect(h.x*CELL+ex1, h.y*CELL+ey1, 3, 3);
+  ctx.fillRect(h.x*CELL+ex2, h.y*CELL+ey2, 3, 3);
+}
+
+function updateHUD() {
+  document.getElementById('score').textContent = score;
+  document.getElementById('level').textContent = level;
+}
+
+function endGame() {
+  clearInterval(loopId);
+  over = true;
+  if (score > best) { best = score; localStorage.setItem('snake-best', best); }
+  document.getElementById('best').textContent = best;
+  const ol = document.getElementById('overlay');
+  ol.querySelector('h1').textContent = 'GAME OVER';
+  ol.querySelector('p').textContent  = `Puntuación: ${score}  ·  Nivel: ${level}`;
+  ol.querySelector('button').textContent = 'REINTENTAR';
+  ol.classList.remove('hidden');
+}
+
+function startGame() {
+  document.getElementById('overlay').classList.add('hidden');
+  init();
+  clearInterval(loopId);
+  loopId = setInterval(step, speed);
+  draw();
+}
+
+// ── CONTROLS ──────────────────────────────────────────
+document.getElementById('start-btn').addEventListener('click', startGame);
+
+document.addEventListener('keydown', e => {
+  const last = dirQueue.length ? dirQueue[dirQueue.length-1] : dir;
+  switch (e.code) {
+    case 'ArrowUp':    if (last.y !== 1)  { dirQueue.push({x:0,y:-1}); e.preventDefault(); } break;
+    case 'ArrowDown':  if (last.y !== -1) { dirQueue.push({x:0,y:1});  e.preventDefault(); } break;
+    case 'ArrowLeft':  if (last.x !== 1)  { dirQueue.push({x:-1,y:0}); e.preventDefault(); } break;
+    case 'ArrowRight': if (last.x !== -1) { dirQueue.push({x:1,y:0});  e.preventDefault(); } break;
+  }
+  if (dirQueue.length > 2) dirQueue.length = 2;
+});
+
+// Touch / swipe
+let tx = null, ty = null;
+canvas.addEventListener('touchstart', e => { tx = e.touches[0].clientX; ty = e.touches[0].clientY; }, {passive:true});
+canvas.addEventListener('touchend', e => {
+  if (tx === null) return;
+  const dx = e.changedTouches[0].clientX - tx;
+  const dy = e.changedTouches[0].clientY - ty;
+  if (Math.abs(dx) > Math.abs(dy)) {
+    if (dx >  20 && dir.x !== -1) dirQueue.push({x:1,y:0});
+    if (dx < -20 && dir.x !==  1) dirQueue.push({x:-1,y:0});
+  } else {
+    if (dy >  20 && dir.y !== -1) dirQueue.push({x:0,y:1});
+    if (dy < -20 && dir.y !==  1) dirQueue.push({x:0,y:-1});
+  }
+  tx = ty = null;
+}, {passive:true});
+</script>
+</body>
+</html>

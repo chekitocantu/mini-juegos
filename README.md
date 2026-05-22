@@ -9,9 +9,9 @@ Colección de juegos clásicos hechos con HTML/CSS/JS puro. Sin instalación, si
 | Juego | Estado |
 |-------|--------|
 | 🟦 Tetris | ✅ Disponible |
-| 🐍 Snake | 🔜 Próximamente |
-| 🧱 Breakout | 🔜 Próximamente |
-| 🔢 2048 | 🔜 Próximamente |
+| 🐍 Snake | ✅ Disponible |
+| 🧱 Breakout | ✅ Disponible |
+| 🔢 2048 | ✅ Disponible |
 
 ## ¿Te lo bloquearon? Forkéalo
 
