@@ -13,7 +13,7 @@
       justify-content:center; min-height:100vh; gap:10px;
     }
     #topbar {
-      width:400px; display:flex;
+      width:min(400px, 90vw); display:flex;
       justify-content:space-between; align-items:center;
     }
     .back-home {
@@ -32,7 +32,7 @@
     .back-home:hover { background:#4d6549; color:#fff; border-color:#8ba888; }
     #game-label { font-size:13px; letter-spacing:3px; color:#00cf33; font-weight:bold; }
     #hud {
-      width:400px; display:flex; gap:8px;
+      width:min(400px, 90vw); display:flex; gap:8px;
     }
     .panel {
       flex:1; background:#16213e; border:1px solid #4a4a8a;
@@ -40,7 +40,7 @@
     }
     .panel h3 { font-size:9px; letter-spacing:2px; text-transform:uppercase; color:#8888cc; margin-bottom:2px; }
     .panel .val { font-size:20px; font-weight:bold; color:#fff; }
-    canvas { border:2px solid #4a4a8a; box-shadow:0 0 30px #4a4a8a88; display:block; }
+    canvas { border:2px solid #4a4a8a; box-shadow:0 0 30px #4a4a8a88; display:block; width:min(400px, 90vw); height:auto; aspect-ratio:1; }
     #hint { font-size:11px; color:#555; margin-top:4px; }
 
     #overlay {
