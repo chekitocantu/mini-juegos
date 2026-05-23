@@ -37,30 +37,46 @@
       padding:0 10px;
       display:flex; flex-direction:column;
     }
-
     #dos-canvas {
-      width:100%;
-      aspect-ratio:4/3;
+      width:100%; aspect-ratio:4/3;
       background:#000;
       border:2px solid #660000;
       box-shadow:0 0 40px #cc220055;
-      border-radius:4px;
-      display:block;
-      cursor:default;
+      border-radius:4px; display:block;
     }
-
+    #status {
+      font-size:12px; color:#882200; letter-spacing:2px;
+      padding:8px 0; text-align:center; min-height:24px;
+    }
     #hint {
       font-size:11px; color:#444;
-      text-align:center;
-      padding:10px 0 20px;
+      text-align:center; padding:4px 0 20px;
     }
     #hint span { color:#882200; }
 
-    /* Overlay de inicio */
+    #game-toolbar {
+      display:none;
+      width:100%; justify-content:flex-end;
+      padding:8px 0 0;
+    }
+    #game-toolbar.visible { display:flex; }
+    #fs-btn {
+      background:transparent;
+      border:1px solid #660000;
+      color:#cc2200;
+      font-family:inherit; font-size:11px;
+      letter-spacing:2px; font-weight:bold;
+      padding:6px 12px; border-radius:6px;
+      cursor:pointer; transition:all .2s;
+    }
+    #fs-btn:hover { background:#3d1a1a; color:#ff3300; border-color:#cc2200; }
+
+    /* ── OVERLAY ── */
     #overlay {
-      position:fixed; inset:0; background:#000d;
+      position:fixed; inset:0; background:#000e;
       display:flex; flex-direction:column;
-      justify-content:center; align-items:center; gap:16px; z-index:10;
+      justify-content:center; align-items:center;
+      gap:20px; z-index:10; padding:20px;
     }
     #overlay.hidden { display:none; }
 
@@ -68,41 +84,132 @@
       font-size:clamp(40px, 12vw, 72px);
       letter-spacing:10px; color:#cc2200;
       text-shadow:0 0 30px #ff0000, 0 0 80px #660000;
-      font-weight:900;
+      font-weight:900; line-height:1;
     }
-    #overlay p { color:#888; font-size:13px; text-align:center; line-height:1.8; max-width:300px; }
-    .menu-actions { display:flex; flex-direction:column; gap:8px; width:240px; margin-top:6px; }
-    .btn-primary {
-      padding:12px 24px; font-size:15px; font-family:inherit;
-      border-radius:8px; cursor:pointer; letter-spacing:2px; font-weight:bold;
+    #overlay .subtitle {
+      color:#555; font-size:12px; text-align:center;
+      letter-spacing:2px; margin-top:-10px;
+    }
+
+    /* ── CONTROL PICKER ── */
+    #control-picker {
+      display:flex; gap:14px; flex-wrap:wrap; justify-content:center;
+      width:100%; max-width:580px;
+    }
+
+    .ctrl-card {
+      flex:1; min-width:220px; max-width:260px;
+      background:#111; border:2px solid #2a2a2a;
+      border-radius:10px; padding:18px 20px;
+      cursor:pointer; transition:border-color .2s, background .2s, box-shadow .2s;
+      text-align:left;
+    }
+    .ctrl-card:hover {
+      border-color:#882200;
+      background:#1a0a0a;
+    }
+    .ctrl-card.selected {
+      border-color:#cc2200;
+      background:#1a0a0a;
+      box-shadow:0 0 20px #cc220033;
+    }
+
+    .ctrl-title {
+      font-size:13px; font-weight:bold; letter-spacing:3px;
+      color:#cc2200; margin-bottom:4px;
+    }
+    .ctrl-subtitle {
+      font-size:10px; color:#444; margin-bottom:14px; letter-spacing:1px;
+    }
+
+    .ctrl-list {
+      list-style:none; display:flex; flex-direction:column; gap:6px;
+    }
+    .ctrl-list li {
+      display:flex; align-items:center; gap:10px;
+      font-size:11px; color:#666;
+    }
+    .ctrl-list li .key {
+      display:inline-flex; align-items:center; justify-content:center;
+      min-width:28px; padding:2px 6px; height:22px;
+      background:#1e1e1e; border:1px solid #333;
+      border-radius:4px; border-bottom-width:2px;
+      font-size:10px; font-weight:bold; color:#aaa;
+      white-space:nowrap; flex-shrink:0;
+    }
+    .ctrl-list li .action { color:#555; }
+
+    /* selección visual */
+    .ctrl-card.selected .ctrl-title { color:#ff3300; }
+    .ctrl-card.selected .ctrl-list li .action { color:#666; }
+    .ctrl-card.selected .ctrl-list li .key {
+      border-color:#660000; color:#cc8888;
+    }
+
+    /* ── BOTONES ── */
+    .overlay-actions { display:flex; flex-direction:column; gap:8px; width:100%; max-width:280px; }
+
+    .btn-play {
+      padding:13px 24px; font-size:15px; font-family:inherit;
+      border-radius:8px; cursor:pointer; letter-spacing:3px; font-weight:bold;
       text-align:center; display:block; transition:all .2s;
       background:#cc2200; color:#fff; border:none;
+      opacity:0.4; pointer-events:none;
     }
-    .btn-primary:hover { background:#ff2200; box-shadow:0 0 20px #ff220066; }
-    .btn-secondary {
-      background:transparent; color:#666; border:1px solid #333;
-      font-size:12px; font-weight:normal; letter-spacing:1px;
+    .btn-play.ready {
+      opacity:1; pointer-events:auto;
+    }
+    .btn-play.ready:hover { background:#ff2200; box-shadow:0 0 24px #ff220055; }
+
+    .btn-back {
+      background:transparent; color:#444; border:1px solid #222;
+      font-size:12px; letter-spacing:1px;
       padding:10px 24px; border-radius:8px; cursor:pointer;
       text-align:center; text-decoration:none; display:block;
       font-family:inherit; transition:all .2s;
     }
-    .btn-secondary:hover { border-color:#882200; color:#aaa; }
-
-    /* Estado de carga */
-    #status {
-      font-size:12px; color:#882200; letter-spacing:2px;
-      padding:8px 0; text-align:center; min-height:24px;
-    }
+    .btn-back:hover { border-color:#882200; color:#888; }
   </style>
 </head>
 <body>
 
 <div id="overlay">
   <h1>DOOM</h1>
-  <p>Episodio 1 — Shareware 1993<br>Mata demonios. Sobrevive al infierno.</p>
-  <div class="menu-actions">
-    <button class="btn-primary" id="start-btn">▶ JUGAR</button>
-    <a class="btn-secondary" href="../">← Volver al inicio</a>
+  <p class="subtitle">EPISODIO 1 · SHAREWARE 1993</p>
+
+  <div id="control-picker">
+
+    <div class="ctrl-card" data-scheme="classic" onclick="selectScheme(this)">
+      <div class="ctrl-title">CLÁSICO</div>
+      <div class="ctrl-subtitle">Original de 1993</div>
+      <ul class="ctrl-list">
+        <li><span class="key">↑ ↓</span><span class="action">Avanzar / Retroceder</span></li>
+        <li><span class="key">← →</span><span class="action">Girar</span></li>
+        <li><span class="key">Alt + ←→</span><span class="action">Desplazarse lateral</span></li>
+        <li><span class="key">Ctrl</span><span class="action">Disparar</span></li>
+        <li><span class="key">Espacio</span><span class="action">Abrir puertas</span></li>
+        <li><span class="key">Shift</span><span class="action">Correr</span></li>
+      </ul>
+    </div>
+
+    <div class="ctrl-card" data-scheme="modern" onclick="selectScheme(this)">
+      <div class="ctrl-title">MODERNOS</div>
+      <div class="ctrl-subtitle">WASD + ratón</div>
+      <ul class="ctrl-list">
+        <li><span class="key">W S</span><span class="action">Avanzar / Retroceder</span></li>
+        <li><span class="key">Ratón</span><span class="action">Girar</span></li>
+        <li><span class="key">A D</span><span class="action">Desplazarse lateral</span></li>
+        <li><span class="key">Clic izq</span><span class="action">Disparar</span></li>
+        <li><span class="key">Espacio</span><span class="action">Abrir puertas</span></li>
+        <li><span class="key">Shift</span><span class="action">Correr</span></li>
+      </ul>
+    </div>
+
+  </div>
+
+  <div class="overlay-actions">
+    <button class="btn-play" id="play-btn" onclick="startDoom()">▶ JUGAR</button>
+    <a class="btn-back" href="../">← Volver al inicio</a>
   </div>
 </div>
 
@@ -114,36 +221,74 @@
 
 <div id="dos-wrap">
   <canvas id="dos-canvas"></canvas>
-  <div id="status"></div>
-  <div id="hint">
-    <span>↑↓←→</span> mover &nbsp;|&nbsp; <span>Ctrl</span> disparar &nbsp;|&nbsp;
-    <span>Espacio</span> abrir &nbsp;|&nbsp; <span>Alt+Enter</span> pantalla completa
+  <div id="game-toolbar">
+    <button id="fs-btn" onclick="goFullscreen()">⛶ PANTALLA COMPLETA</button>
   </div>
+  <div id="status"></div>
+  <div id="hint"></div>
 </div>
 
 <script src="https://js-dos.com/6.22/current/js-dos.js"></script>
 <script>
-  const status = document.getElementById('status');
+let selectedScheme = null;
 
-  document.getElementById('start-btn').addEventListener('click', () => {
-    document.getElementById('overlay').classList.add('hidden');
-    startDoom();
+// Desacopla el eje Y del mouse para que solo gire la cámara (sin avanzar/retroceder)
+// cuando se elige el modo moderno. Doom 1.9 vanilla tiene `forward += mousey`
+// hardcodeado, así que lo interceptamos en el browser antes de que js-dos lo lea.
+(function() {
+  const desc = Object.getOwnPropertyDescriptor(MouseEvent.prototype, 'movementY');
+  if (!desc || !desc.get) return;
+  Object.defineProperty(MouseEvent.prototype, 'movementY', {
+    configurable: true,
+    get: function() {
+      return window._zeroMouseY ? 0 : desc.get.call(this);
+    }
   });
+})();
 
-  function startDoom() {
-    status.textContent = 'CARGANDO DOOM...';
-    const canvas = document.getElementById('dos-canvas');
+function goFullscreen() {
+  const canvas = document.getElementById('dos-canvas');
+  if (canvas.requestFullscreen) canvas.requestFullscreen();
+  else if (canvas.webkitRequestFullscreen) canvas.webkitRequestFullscreen();
+}
 
-    Dos(canvas, {
-      wdosboxUrl: 'https://js-dos.com/6.22/current/wdosbox.js',
-    }).ready(function(fs, main) {
-      status.textContent = 'EXTRAYENDO ARCHIVOS...';
-      fs.extract('doom.jsdos').then(function() {
-        status.textContent = '';
-        main(['-conf', 'dosbox.conf']);
-      });
-    });
-  }
+const HINTS = {
+  classic: '<span>↑↓←→</span> mover &nbsp;|&nbsp; <span>Alt+←→</span> lateral &nbsp;|&nbsp; <span>Ctrl</span> disparar &nbsp;|&nbsp; <span>Espacio</span> abrir',
+  modern:  '<span>WASD</span> mover &nbsp;|&nbsp; <span>Ratón</span> girar &nbsp;|&nbsp; <span>Clic izq</span> disparar &nbsp;|&nbsp; <span>Espacio</span> abrir',
+};
+
+
+function selectScheme(card) {
+  document.querySelectorAll('.ctrl-card').forEach(c => c.classList.remove('selected'));
+  card.classList.add('selected');
+  selectedScheme = card.dataset.scheme;
+  document.getElementById('play-btn').classList.add('ready');
+}
+
+function startDoom() {
+  if (!selectedScheme) return;
+  window._zeroMouseY = (selectedScheme === 'modern');
+  document.getElementById('overlay').classList.add('hidden');
+  document.getElementById('hint').innerHTML = HINTS[selectedScheme];
+
+  const status = document.getElementById('status');
+  status.textContent = 'CARGANDO DOOM...';
+
+  Dos(document.getElementById('dos-canvas'), {
+    wdosboxUrl: 'https://js-dos.com/6.22/current/wdosbox.js',
+  }).ready(function(fs, main) {
+    status.textContent = 'EXTRAYENDO ARCHIVOS...';
+
+    function launch() {
+      status.textContent = '';
+      main(['-conf', 'dosbox.conf']);
+      document.getElementById('game-toolbar').classList.add('visible');
+    }
+
+    var bundle = selectedScheme === 'modern' ? 'doom-modern.jsdos' : 'doom-classic.jsdos';
+    fs.extract(bundle).then(launch);
+  });
+}
 </script>
 </body>
 </html>
