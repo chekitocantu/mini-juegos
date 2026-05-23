@@ -221,6 +221,27 @@
       letter-spacing: 0.5px;
       font-family: -apple-system, sans-serif;
     }
+    .card-preview .pc-badge {
+      position: absolute;
+      top: 10px; left: 10px;
+      background: #1a0a0a;
+      border: 1px solid #882200;
+      color: #ff4422;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 99px;
+      letter-spacing: 1px;
+      font-family: 'Courier New', monospace;
+    }
+    .section-sub {
+      font-size: 11px;
+      color: #555;
+      letter-spacing: 1px;
+      text-transform: none;
+      margin-left: 8px;
+      font-weight: normal;
+    }
     .card-preview .soon-badge {
       position: absolute;
       top: 10px; right: 10px;
@@ -486,24 +507,6 @@
       </div>
     </a>
 
-    <!-- DOOM -->
-    <a class="card" data-game="doom" href="doom/">
-      <div class="card-preview">
-        <span class="emoji">👹</span>
-        <span class="live-badge">EN VIVO</span>
-      </div>
-      <div class="card-body">
-        <div class="card-name">DOOM</div>
-        <div class="card-desc">El FPS que lo inició todo. Mata demonios en el Episodio 1 del shareware original de 1993, corriendo en DOSBox.</div>
-        <div class="card-tags">
-          <span class="tag">FPS</span>
-          <span class="tag">1 jugador</span>
-          <span class="tag">DOSBox</span>
-        </div>
-        <span class="play-btn">▶ Jugar ahora</span>
-      </div>
-    </a>
-
   </div>
 </section>
 
@@ -543,6 +546,35 @@
           <span class="tag">Estrategia</span>
           <span class="tag">2 jugadores</span>
           <span class="tag">Local</span>
+        </div>
+        <span class="play-btn">▶ Jugar ahora</span>
+      </div>
+    </a>
+
+  </div>
+</section>
+
+<!-- SOLO PC -->
+<section class="section">
+  <div class="section-title">
+    Solo PC <span class="section-sub">⌨ Requieren teclado y ratón</span>
+  </div>
+  <div class="grid">
+
+    <!-- DOOM -->
+    <a class="card" data-game="doom" href="doom/">
+      <div class="card-preview">
+        <span class="emoji">👹</span>
+        <span class="live-badge">EN VIVO</span>
+        <span class="pc-badge">SOLO PC</span>
+      </div>
+      <div class="card-body">
+        <div class="card-name">DOOM</div>
+        <div class="card-desc">El FPS que lo inició todo. Mata demonios en el Episodio 1 del shareware original de 1993, corriendo en DOSBox.</div>
+        <div class="card-tags">
+          <span class="tag">FPS</span>
+          <span class="tag">1 jugador</span>
+          <span class="tag">DOSBox</span>
         </div>
         <span class="play-btn">▶ Jugar ahora</span>
       </div>
