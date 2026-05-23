@@ -243,13 +243,8 @@ function startDoom() {
       main(['-conf', 'dosbox.conf']);
     }
 
-    fs.extract('doom.jsdos').then(function() {
-      if (selectedScheme === 'modern') {
-        fs.extract('cfg-modern.zip').then(launch);
-      } else {
-        launch();
-      }
-    });
+    var bundle = selectedScheme === 'modern' ? 'doom-modern.jsdos' : 'doom-classic.jsdos';
+    fs.extract(bundle).then(launch);
   });
 }
 </script>
