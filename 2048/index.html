@@ -387,8 +387,15 @@ document.addEventListener('keydown', e => {
 
 // Touch swipe
 let tx = null, ty = null;
-document.addEventListener('touchstart', e => { tx=e.touches[0].clientX; ty=e.touches[0].clientY; }, {passive:true});
-document.addEventListener('touchend', e => {
+const boardWrap = document.getElementById('board-wrap');
+boardWrap.addEventListener('touchstart', e => {
+  e.preventDefault();
+  tx = e.touches[0].clientX;
+  ty = e.touches[0].clientY;
+}, {passive: false});
+boardWrap.addEventListener('touchmove', e => { e.preventDefault(); }, {passive: false});
+boardWrap.addEventListener('touchend', e => {
+  e.preventDefault();
   if (tx===null) return;
   const dx = e.changedTouches[0].clientX - tx;
   const dy = e.changedTouches[0].clientY - ty;
@@ -398,7 +405,7 @@ document.addEventListener('touchend', e => {
     move(dy > 20 ? 'down' : dy < -20 ? 'up' : null);
   }
   tx = ty = null;
-}, {passive:true});
+}, {passive: false});
 
 // Buttons
 document.getElementById('start-btn').addEventListener('click', () => {
