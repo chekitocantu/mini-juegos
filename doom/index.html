@@ -232,6 +232,20 @@
 <script>
 let selectedScheme = null;
 
+// Desacopla el eje Y del mouse para que solo gire la cámara (sin avanzar/retroceder)
+// cuando se elige el modo moderno. Doom 1.9 vanilla tiene `forward += mousey`
+// hardcodeado, así que lo interceptamos en el browser antes de que js-dos lo lea.
+(function() {
+  const desc = Object.getOwnPropertyDescriptor(MouseEvent.prototype, 'movementY');
+  if (!desc || !desc.get) return;
+  Object.defineProperty(MouseEvent.prototype, 'movementY', {
+    configurable: true,
+    get: function() {
+      return window._zeroMouseY ? 0 : desc.get.call(this);
+    }
+  });
+})();
+
 function goFullscreen() {
   const canvas = document.getElementById('dos-canvas');
   if (canvas.requestFullscreen) canvas.requestFullscreen();
@@ -253,6 +267,7 @@ function selectScheme(card) {
 
 function startDoom() {
   if (!selectedScheme) return;
+  window._zeroMouseY = (selectedScheme === 'modern');
   document.getElementById('overlay').classList.add('hidden');
   document.getElementById('hint').innerHTML = HINTS[selectedScheme];
 
