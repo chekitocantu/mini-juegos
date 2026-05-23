@@ -54,6 +54,23 @@
     }
     #hint span { color:#882200; }
 
+    #game-toolbar {
+      display:none;
+      width:100%; justify-content:flex-end;
+      padding:8px 0 0;
+    }
+    #game-toolbar.visible { display:flex; }
+    #fs-btn {
+      background:transparent;
+      border:1px solid #660000;
+      color:#cc2200;
+      font-family:inherit; font-size:11px;
+      letter-spacing:2px; font-weight:bold;
+      padding:6px 12px; border-radius:6px;
+      cursor:pointer; transition:all .2s;
+    }
+    #fs-btn:hover { background:#3d1a1a; color:#ff3300; border-color:#cc2200; }
+
     /* ── OVERLAY ── */
     #overlay {
       position:fixed; inset:0; background:#000e;
@@ -204,6 +221,9 @@
 
 <div id="dos-wrap">
   <canvas id="dos-canvas"></canvas>
+  <div id="game-toolbar">
+    <button id="fs-btn" onclick="goFullscreen()">⛶ PANTALLA COMPLETA</button>
+  </div>
   <div id="status"></div>
   <div id="hint"></div>
 </div>
@@ -212,9 +232,15 @@
 <script>
 let selectedScheme = null;
 
+function goFullscreen() {
+  const canvas = document.getElementById('dos-canvas');
+  if (canvas.requestFullscreen) canvas.requestFullscreen();
+  else if (canvas.webkitRequestFullscreen) canvas.webkitRequestFullscreen();
+}
+
 const HINTS = {
-  classic: '<span>↑↓←→</span> mover &nbsp;|&nbsp; <span>Alt+←→</span> lateral &nbsp;|&nbsp; <span>Ctrl</span> disparar &nbsp;|&nbsp; <span>Espacio</span> abrir &nbsp;|&nbsp; <span>Alt+Enter</span> pantalla completa',
-  modern:  '<span>WASD</span> mover &nbsp;|&nbsp; <span>Ratón</span> girar &nbsp;|&nbsp; <span>Clic izq</span> disparar &nbsp;|&nbsp; <span>Espacio</span> abrir &nbsp;|&nbsp; <span>Alt+Enter</span> pantalla completa',
+  classic: '<span>↑↓←→</span> mover &nbsp;|&nbsp; <span>Alt+←→</span> lateral &nbsp;|&nbsp; <span>Ctrl</span> disparar &nbsp;|&nbsp; <span>Espacio</span> abrir',
+  modern:  '<span>WASD</span> mover &nbsp;|&nbsp; <span>Ratón</span> girar &nbsp;|&nbsp; <span>Clic izq</span> disparar &nbsp;|&nbsp; <span>Espacio</span> abrir',
 };
 
 
@@ -241,6 +267,7 @@ function startDoom() {
     function launch() {
       status.textContent = '';
       main(['-conf', 'dosbox.conf']);
+      document.getElementById('game-toolbar').classList.add('visible');
     }
 
     var bundle = selectedScheme === 'modern' ? 'doom-modern.jsdos' : 'doom-classic.jsdos';
