@@ -237,13 +237,18 @@ function startDoom() {
     wdosboxUrl: 'https://js-dos.com/6.22/current/wdosbox.js',
   }).ready(function(fs, main) {
     status.textContent = 'EXTRAYENDO ARCHIVOS...';
-    fs.extract('doom.jsdos').then(function() {
-      if (selectedScheme === 'modern') {
-        return fs.extract('cfg-modern.zip');
-      }
-    }).then(function() {
+
+    function launch() {
       status.textContent = '';
       main(['-conf', 'dosbox.conf']);
+    }
+
+    fs.extract('doom.jsdos').then(function() {
+      if (selectedScheme === 'modern') {
+        fs.extract('cfg-modern.zip').then(launch);
+      } else {
+        launch();
+      }
     });
   });
 }
