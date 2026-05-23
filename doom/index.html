@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DOOM — BrowserLab</title>
-  <link rel="stylesheet" href="https://v8.js-dos.com/latest/js-dos.css">
   <style>
     *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
     body {
@@ -17,107 +16,90 @@
     .back-home {
       position:fixed; top:18px; left:18px;
       padding:8px 14px;
-      background:#3d1a1a;
-      border:1px solid #8b2222;
-      border-radius:8px;
-      color:#e08080;
+      background:#3d1a1a; border:1px solid #8b2222;
+      border-radius:8px; color:#e08080;
       text-decoration:none;
       font-family:'Courier New',monospace;
       font-size:13px; letter-spacing:1px; font-weight:bold;
-      transition:background .2s, color .2s;
-      z-index:20;
+      transition:background .2s, color .2s; z-index:20;
     }
     .back-home:hover { background:#5a2020; color:#fff; }
 
     #topbar {
-      width:100%; max-width:800px;
+      width:100%; max-width:640px;
       display:flex; justify-content:center; align-items:center;
       padding:14px 20px;
-      position:relative;
     }
     #game-label { font-size:15px; letter-spacing:5px; color:#cc2200; font-weight:bold; }
 
     #dos-wrap {
-      width:100%; max-width:800px;
+      width:100%; max-width:640px;
       padding:0 10px;
-      flex:1;
-      display:flex;
-      flex-direction:column;
+      display:flex; flex-direction:column;
     }
 
-    #dos-container {
+    #dos-canvas {
       width:100%;
       aspect-ratio:4/3;
       background:#000;
       border:2px solid #660000;
       box-shadow:0 0 40px #cc220055;
       border-radius:4px;
-      overflow:hidden;
-    }
-
-    /* override js-dos player to fill the container */
-    #dos-container > div,
-    #dos-container canvas {
-      width:100% !important;
-      height:100% !important;
+      display:block;
+      cursor:default;
     }
 
     #hint {
-      font-size:11px; color:#555;
+      font-size:11px; color:#444;
       text-align:center;
       padding:10px 0 20px;
     }
     #hint span { color:#882200; }
 
+    /* Overlay de inicio */
     #overlay {
       position:fixed; inset:0; background:#000d;
       display:flex; flex-direction:column;
       justify-content:center; align-items:center; gap:16px; z-index:10;
     }
+    #overlay.hidden { display:none; }
+
     #overlay h1 {
-      font-size:clamp(36px, 10vw, 64px);
-      letter-spacing:8px; color:#cc2200;
-      text-shadow:0 0 30px #ff0000, 0 0 60px #880000;
+      font-size:clamp(40px, 12vw, 72px);
+      letter-spacing:10px; color:#cc2200;
+      text-shadow:0 0 30px #ff0000, 0 0 80px #660000;
       font-weight:900;
     }
-    #overlay p { color:#888; font-size:13px; text-align:center; line-height:1.8; max-width:320px; }
+    #overlay p { color:#888; font-size:13px; text-align:center; line-height:1.8; max-width:300px; }
     .menu-actions { display:flex; flex-direction:column; gap:8px; width:240px; margin-top:6px; }
     .btn-primary {
       padding:12px 24px; font-size:15px; font-family:inherit;
-      border-radius:8px; cursor:pointer;
-      letter-spacing:2px; font-weight:bold;
-      text-align:center; text-decoration:none;
-      display:block; transition:all .2s;
+      border-radius:8px; cursor:pointer; letter-spacing:2px; font-weight:bold;
+      text-align:center; display:block; transition:all .2s;
       background:#cc2200; color:#fff; border:none;
     }
     .btn-primary:hover { background:#ff2200; box-shadow:0 0 20px #ff220066; }
     .btn-secondary {
-      background:transparent; color:#666;
-      border:1px solid #333;
+      background:transparent; color:#666; border:1px solid #333;
       font-size:12px; font-weight:normal; letter-spacing:1px;
       padding:10px 24px; border-radius:8px; cursor:pointer;
-      text-align:center; text-decoration:none; display:block; transition:all .2s;
-      font-family:inherit;
+      text-align:center; text-decoration:none; display:block;
+      font-family:inherit; transition:all .2s;
     }
     .btn-secondary:hover { border-color:#882200; color:#aaa; }
-    .hidden { display:none !important; }
 
-    #loading-msg {
-      position:absolute;
-      color:#882200;
-      font-size:12px;
-      letter-spacing:2px;
-      animation:blink 1s step-end infinite;
-      bottom:30%;
+    /* Estado de carga */
+    #status {
+      font-size:12px; color:#882200; letter-spacing:2px;
+      padding:8px 0; text-align:center; min-height:24px;
     }
-    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
   </style>
 </head>
 <body>
 
 <div id="overlay">
   <h1>DOOM</h1>
-  <p>Episodio 1 — Shareware<br>Mata demonios. Sobrevive al infierno.</p>
+  <p>Episodio 1 — Shareware 1993<br>Mata demonios. Sobrevive al infierno.</p>
   <div class="menu-actions">
     <button class="btn-primary" id="start-btn">▶ JUGAR</button>
     <a class="btn-secondary" href="../">← Volver al inicio</a>
@@ -131,29 +113,35 @@
 </div>
 
 <div id="dos-wrap">
-  <div id="dos-container"></div>
+  <canvas id="dos-canvas"></canvas>
+  <div id="status"></div>
   <div id="hint">
-    <span>↑↓←→</span> mover &nbsp;|&nbsp; <span>Ctrl</span> disparar &nbsp;|&nbsp; <span>Espacio</span> abrir puertas &nbsp;|&nbsp; <span>Alt+Enter</span> pantalla completa
+    <span>↑↓←→</span> mover &nbsp;|&nbsp; <span>Ctrl</span> disparar &nbsp;|&nbsp;
+    <span>Espacio</span> abrir &nbsp;|&nbsp; <span>Alt+Enter</span> pantalla completa
   </div>
 </div>
 
-<script src="https://v8.js-dos.com/latest/js-dos.js"></script>
+<script src="https://js-dos.com/6.22/current/js-dos.js"></script>
 <script>
-  let dosStarted = false;
+  const status = document.getElementById('status');
 
   document.getElementById('start-btn').addEventListener('click', () => {
     document.getElementById('overlay').classList.add('hidden');
-    if (!dosStarted) {
-      dosStarted = true;
-      startDoom();
-    }
+    startDoom();
   });
 
   function startDoom() {
-    const container = document.getElementById('dos-container');
-    Dos(container, {
-      url: './doom.jsdos',
-      theme: 'dark',
+    status.textContent = 'CARGANDO DOOM...';
+    const canvas = document.getElementById('dos-canvas');
+
+    Dos(canvas, {
+      wdosboxUrl: 'https://js-dos.com/6.22/current/wdosbox.js',
+    }).ready(function(fs, main) {
+      status.textContent = 'EXTRAYENDO ARCHIVOS...';
+      fs.extract('doom.jsdos').then(function() {
+        status.textContent = '';
+        main(['-conf', 'dosbox.conf']);
+      });
     });
   }
 </script>
