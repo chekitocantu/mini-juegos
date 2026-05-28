@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Memorama — BrowserLab</title>
+  <style>
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+    body {
+      background:#1a1a2e; color:#eee;
+      font-family:'Courier New',monospace;
+      display:flex; flex-direction:column;
+      align-items:center; justify-content:center;
+      min-height:100vh; gap:12px;
+      user-select:none;
+    }
+
+    .back-home {
+      position:fixed; top:18px; left:18px;
+      padding:8px 14px;
+      background:#3d3a4f;
+      border:1px solid #6b6888;
+      border-radius:8px;
+      color:#c5c0d8;
+      text-decoration:none;
+      font-family:'Courier New',monospace;
+      font-size:13px; letter-spacing:1px; font-weight:bold;
+      transition:background .2s, color .2s, border-color .2s;
+      z-index:20;
+    }
+    .back-home:hover { background:#4d4969; color:#fff; border-color:#8b88a8; }
+
+    #game-label { font-size:13px; letter-spacing:3px; color:#a855f7; font-weight:bold; margin-top:20px; }
+
+    #hud { display:flex; gap:8px; margin-bottom:4px; }
+    .panel {
+      background:#16213e; border:1px solid #4a4a8a;
+      border-radius:6px; padding:6px 14px; text-align:center;
+      min-width:80px;
+    }
+    .panel h3 { font-size:9px; letter-spacing:2px; text-transform:uppercase; color:#8888cc; margin-bottom:2px; }
+    .panel .val { font-size:20px; font-weight:bold; color:#fff; }
+
+    #difficulty {
+      display:flex; gap:8px; margin-bottom:8px;
+    }
+    #difficulty button {
+      padding:6px 14px; font-family:inherit; font-size:12px;
+      font-weight:bold; letter-spacing:1px;
+      background:#16213e; color:#8888cc;
+      border:1px solid #4a4a8a; border-radius:6px;
+      cursor:pointer; transition:all .2s;
+    }
+    #difficulty button:hover { background:#1e2d50; color:#fff; }
+    #difficulty button.active { background:#a855f7; color:#fff; border-color:#a855f7; }
+
+    #board {
+      display:grid;
+      gap:8px;
+      perspective:800px;
+    }
+
+    .cell {
+      width:var(--cell); height:var(--cell);
+      cursor:pointer;
+      position:relative;
+      transform-style:preserve-3d;
+      transition:transform 0.5s;
+    }
+    .cell.flipped { transform:rotateY(180deg); }
+    .cell.matched { transform:rotateY(180deg); }
+    .cell.matched .front,
+    .cell.matched .back { box-shadow:0 0 12px #22c55e88; border-color:#22c55e; }
+
+    .front, .back {
+      position:absolute; inset:0;
+      border-radius:10px;
+      display:flex; align-items:center; justify-content:center;
+      backface-visibility:hidden;
+      border:2px solid #4a4a8a;
+    }
+
+    .front {
+      background:linear-gradient(135deg,#1e2d50,#16213e);
+      font-size:28px;
+      color:#4a4a8a;
+    }
+    .front::after { content:'?'; }
+
+    .back {
+      background:linear-gradient(135deg,#2a1a4e,#1a1040);
+      transform:rotateY(180deg);
+      font-size:calc(var(--cell) * 0.45);
+    }
+
+    #overlay {
+      display:none;
+      position:fixed; inset:0;
+      background:#000a; backdrop-filter:blur(8px);
+      z-index:50;
+      flex-direction:column;
+      align-items:center; justify-content:center; gap:16px;
+    }
+    #overlay.show { display:flex; }
+    #overlay h2 { font-size:28px; color:#a855f7; }
+    #overlay p { color:#8888cc; font-size:14px; }
+    #overlay button {
+      padding:10px 28px; font-family:inherit; font-size:14px;
+      font-weight:bold; letter-spacing:1px;
+      background:#a855f7; color:#fff;
+      border:none; border-radius:8px;
+      cursor:pointer; transition:background .2s;
+    }
+    #overlay button:hover { background:#9333ea; }
+
+    @media (max-width:500px) {
+      .back-home { top:10px; left:10px; padding:6px 10px; font-size:11px; }
+    }
+  </style>
+</head>
+<body>
+
+<a class="back-home" href="../">← INICIO</a>
+
+<div id="game-label">MEMORAMA</div>
+
+<div id="hud">
+  <div class="panel"><h3>Movimientos</h3><div class="val" id="moves">0</div></div>
+  <div class="panel"><h3>Pares</h3><div class="val" id="pairs">0/0</div></div>
+  <div class="panel"><h3>Tiempo</h3><div class="val" id="timer">0:00</div></div>
+</div>
+
+<div id="difficulty">
+  <button data-size="4" class="active">4x4</button>
+  <button data-size="6">6x6</button>
+</div>
+
+<div id="board"></div>
+
+<div id="overlay">
+  <h2 id="win-title">&#127942; Completado!</h2>
+  <p id="win-stats"></p>
+  <button onclick="startGame()">Jugar de nuevo</button>
+</div>
+
+<script>
+const EMOJIS = [
+  '🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼',
+  '🐨','🐯','🦁','🐮','🐷','🐸','🐵','🦄',
+  '🐙','🦋'
+];
+
+let gridSize = 4;
+let cards = [];
+let flipped = [];
+let matched = 0;
+let totalPairs = 0;
+let moves = 0;
+let locked = false;
+let timerInterval = null;
+let seconds = 0;
+
+const board = document.getElementById('board');
+const movesEl = document.getElementById('moves');
+const pairsEl = document.getElementById('pairs');
+const timerEl = document.getElementById('timer');
+const overlay = document.getElementById('overlay');
+const winStats = document.getElementById('win-stats');
+
+document.querySelectorAll('#difficulty button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelector('#difficulty .active').classList.remove('active');
+    btn.classList.add('active');
+    gridSize = parseInt(btn.dataset.size);
+    startGame();
+  });
+});
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function startGame() {
+  clearInterval(timerInterval);
+  seconds = 0; moves = 0; matched = 0; locked = false;
+  flipped = [];
+  overlay.classList.remove('show');
+
+  totalPairs = (gridSize * gridSize) / 2;
+  const picked = shuffle([...EMOJIS]).slice(0, totalPairs);
+  cards = shuffle([...picked, ...picked]);
+
+  const cellSize = Math.min(Math.floor((Math.min(window.innerWidth, 500) - (gridSize + 1) * 8) / gridSize), 90);
+  document.documentElement.style.setProperty('--cell', cellSize + 'px');
+  board.style.gridTemplateColumns = `repeat(${gridSize}, var(--cell))`;
+  board.innerHTML = '';
+
+  cards.forEach((emoji, i) => {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.innerHTML = `<div class="front"></div><div class="back">${emoji}</div>`;
+    cell.addEventListener('click', () => flipCard(cell, i));
+    board.appendChild(cell);
+  });
+
+  movesEl.textContent = '0';
+  pairsEl.textContent = `0/${totalPairs}`;
+  timerEl.textContent = '0:00';
+
+  timerInterval = setInterval(() => {
+    seconds++;
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    timerEl.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+  }, 1000);
+}
+
+function flipCard(cell, index) {
+  if (locked) return;
+  if (cell.classList.contains('flipped') || cell.classList.contains('matched')) return;
+  if (flipped.length >= 2) return;
+
+  cell.classList.add('flipped');
+  flipped.push({ cell, index });
+
+  if (flipped.length === 2) {
+    moves++;
+    movesEl.textContent = moves;
+    locked = true;
+
+    const [a, b] = flipped;
+    if (cards[a.index] === cards[b.index]) {
+      a.cell.classList.add('matched');
+      b.cell.classList.add('matched');
+      matched++;
+      pairsEl.textContent = `${matched}/${totalPairs}`;
+      flipped = [];
+      locked = false;
+
+      if (matched === totalPairs) {
+        clearInterval(timerInterval);
+        setTimeout(() => {
+          const m = Math.floor(seconds / 60);
+          const s = seconds % 60;
+          winStats.textContent = `${moves} movimientos en ${m}:${s.toString().padStart(2, '0')}`;
+          overlay.classList.add('show');
+        }, 600);
+      }
+    } else {
+      setTimeout(() => {
+        a.cell.classList.remove('flipped');
+        b.cell.classList.remove('flipped');
+        flipped = [];
+        locked = false;
+      }, 800);
+    }
+  }
+}
+
+startGame();
+</script>
+</body>
+</html>
