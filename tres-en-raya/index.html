@@ -32,7 +32,6 @@
     #topbar { width:332px; display:flex; justify-content:space-between; align-items:center; }
     #game-label { font-size:13px; letter-spacing:3px; color:#f97316; font-weight:bold; }
 
-    /* Turno actual */
     #turn-row {
       width:332px; display:flex; justify-content:center; align-items:center; gap:14px;
       background:#16213e; border:1px solid #4a4a8a; border-radius:8px;
@@ -43,7 +42,6 @@
     .turn-value.x { color:#f97316; }
     .turn-value.o { color:#3b82f6; }
 
-    /* Tablero */
     #board {
       display:grid;
       grid-template-columns:repeat(3, 100px);
@@ -65,7 +63,6 @@
       transition:border-color .15s, background .2s, transform .1s;
     }
     .cell:hover:not(.x):not(.o) { background:#222244; }
-    /* Solo el contorno cuando está seleccionada — sin holograma de la pieza */
     .cell.selected {
       border-color:#6b8568;
       box-shadow:0 0 14px #6b8568aa;
@@ -83,7 +80,6 @@
       100% { transform:scale(1); }
     }
 
-    /* Marcador */
     #scores { width:332px; display:flex; gap:8px; }
     .score {
       flex:1; background:#16213e; border:1px solid #4a4a8a;
@@ -112,8 +108,38 @@
 
     .menu-actions {
       display:flex; flex-direction:column; gap:8px;
-      width:240px; margin-top:6px;
+      width:280px; margin-top:6px;
     }
+
+    .mode-select {
+      display:flex; gap:8px; width:100%;
+    }
+    .mode-btn {
+      flex:1; padding:10px 8px; font-family:inherit; font-size:12px;
+      font-weight:bold; letter-spacing:1px;
+      background:#16213e; color:#8888cc;
+      border:1px solid #4a4a8a; border-radius:8px;
+      cursor:pointer; transition:all .2s; text-align:center;
+    }
+    .mode-btn:hover { background:#1e2d50; color:#fff; }
+    .mode-btn.active { background:#f97316; color:#000; border-color:#f97316; }
+
+    .ai-levels {
+      display:none; flex-direction:column; gap:6px; width:100%;
+    }
+    .ai-levels.show { display:flex; }
+    .ai-level-btn {
+      padding:8px 12px; font-family:inherit; font-size:11px;
+      font-weight:bold; letter-spacing:1px;
+      background:#16213e; color:#8888cc;
+      border:1px solid #4a4a8a; border-radius:8px;
+      cursor:pointer; transition:all .2s; text-align:left;
+    }
+    .ai-level-btn:hover { background:#1e2d50; color:#fff; }
+    .ai-level-btn.active { background:#f97316; color:#000; border-color:#f97316; }
+    .ai-level-btn small { display:block; font-weight:normal; font-size:10px; color:#777; margin-top:2px; }
+    .ai-level-btn.active small { color:#333; }
+
     .btn-primary, .btn-secondary {
       padding:12px 24px; font-size:15px; font-family:inherit;
       border-radius:8px; cursor:pointer;
@@ -139,9 +165,33 @@
 
 <div id="overlay">
   <h1>TRES EN RAYA</h1>
-  <p class="overlay-sub" id="overlay-sub">Dos jugadores · X empieza · Llega a 3 en línea</p>
+  <p class="overlay-sub" id="overlay-sub">X empieza · Llega a 3 en línea</p>
 
   <div class="menu-actions">
+    <div class="mode-select">
+      <button class="mode-btn active" data-mode="pvp">2 Jugadores</button>
+      <button class="mode-btn" data-mode="ai">vs Máquina</button>
+    </div>
+
+    <div class="ai-levels" id="ai-levels">
+      <button class="ai-level-btn active" data-level="1">
+        Nivel 1 — Novato
+        <small>Juega al azar</small>
+      </button>
+      <button class="ai-level-btn" data-level="2">
+        Nivel 2 — Normal
+        <small>Bloquea y ataca si puede</small>
+      </button>
+      <button class="ai-level-btn" data-level="3">
+        Nivel 3 — Difícil
+        <small>Casi perfecto, algún error</small>
+      </button>
+      <button class="ai-level-btn" data-level="4">
+        Nivel 4 — Imposible
+        <small>Minimax perfecto, nunca pierde</small>
+      </button>
+    </div>
+
     <button id="start-btn" class="btn-primary">▶ JUGAR</button>
     <a class="btn-secondary" href="../">← Volver al inicio</a>
   </div>
@@ -172,11 +222,11 @@
 
 <div id="scores">
   <div class="score x">
-    <div class="score-label">X gana</div>
+    <div class="score-label" id="label-x">X gana</div>
     <div class="score-value" id="score-x">0</div>
   </div>
   <div class="score o">
-    <div class="score-label">O gana</div>
+    <div class="score-label" id="label-o">O gana</div>
     <div class="score-value" id="score-o">0</div>
   </div>
   <div class="score">
@@ -200,9 +250,38 @@ const LINES = [
 ];
 
 let board, cursor, current, over;
+let vsAI = false;
+let aiLevel = 1;
+let aiThinking = false;
 let scores = JSON.parse(localStorage.getItem('ttt-scores') || '{"X":0,"O":0,"D":0}');
 
+// Setup UI
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelector('.mode-btn.active').classList.remove('active');
+    btn.classList.add('active');
+    document.getElementById('ai-levels').classList.toggle('show', btn.dataset.mode === 'ai');
+  });
+});
+
+document.querySelectorAll('.ai-level-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelector('.ai-level-btn.active').classList.remove('active');
+    btn.classList.add('active');
+  });
+});
+
 function init() {
+  vsAI = document.querySelector('.mode-btn.active').dataset.mode === 'ai';
+  aiLevel = parseInt(document.querySelector('.ai-level-btn.active').dataset.level);
+  aiThinking = false;
+
+  if (vsAI) {
+    document.getElementById('label-o').textContent = `Máquina Nv.${aiLevel}`;
+  } else {
+    document.getElementById('label-o').textContent = 'O gana';
+  }
+
   board   = Array(9).fill(null);
   cursor  = 4;
   current = 'X';
@@ -219,7 +298,11 @@ function render() {
     if (i === cursor && !over) cell.classList.add('selected');
   });
   const turnEl = document.getElementById('turn');
-  turnEl.textContent = current;
+  if (vsAI && current === 'O') {
+    turnEl.textContent = 'MÁQUINA';
+  } else {
+    turnEl.textContent = current;
+  }
   turnEl.className = 'turn-value ' + current.toLowerCase();
 }
 
@@ -240,9 +323,10 @@ function checkWin() {
   return null;
 }
 
-function place() {
-  if (over || board[cursor]) return;
-  board[cursor] = current;
+function place(pos) {
+  if (over || board[pos] !== null) return;
+  if (aiThinking) return;
+  board[pos] = current;
 
   const win = checkWin();
   if (win) {
@@ -252,8 +336,8 @@ function place() {
     render();
     win.line.forEach(i => cells[i].classList.add('winning'));
     updateScores();
-    setTimeout(() => showOverlay(
-      `¡${win.winner} GANA!`,
+    const label = vsAI && win.winner === 'O' ? 'MÁQUINA GANA' : `¡${win.winner} GANA!`;
+    setTimeout(() => showOverlay(label,
       `X ${scores.X}  ·  O ${scores.O}  ·  Empates ${scores.D}`
     ), 700);
     return;
@@ -265,8 +349,7 @@ function place() {
     localStorage.setItem('ttt-scores', JSON.stringify(scores));
     updateScores();
     render();
-    setTimeout(() => showOverlay(
-      'EMPATE',
+    setTimeout(() => showOverlay('EMPATE',
       `X ${scores.X}  ·  O ${scores.O}  ·  Empates ${scores.D}`
     ), 400);
     return;
@@ -274,6 +357,16 @@ function place() {
 
   current = current === 'X' ? 'O' : 'X';
   render();
+
+  if (vsAI && current === 'O' && !over) {
+    aiThinking = true;
+    setTimeout(() => {
+      const move = aiChooseMove();
+      cursor = move;
+      place(move);
+      aiThinking = false;
+    }, 400);
+  }
 }
 
 function showOverlay(title, sub) {
@@ -284,9 +377,97 @@ function showOverlay(title, sub) {
   ol.classList.remove('hidden');
 }
 
-// ── Controles ────────────────────────────────────────
+// ── AI ──
+function getEmpty() {
+  return board.map((v, i) => v === null ? i : -1).filter(i => i >= 0);
+}
+
+function findWinMove(player) {
+  for (const line of LINES) {
+    const vals = line.map(i => board[i]);
+    const mine = vals.filter(v => v === player).length;
+    const empty = vals.filter(v => v === null).length;
+    if (mine === 2 && empty === 1) {
+      return line.find(i => board[i] === null);
+    }
+  }
+  return -1;
+}
+
+function minimax(b, isMax, depth) {
+  const win = checkWinBoard(b);
+  if (win === 'O') return 10 - depth;
+  if (win === 'X') return depth - 10;
+  const empty = b.map((v, i) => v === null ? i : -1).filter(i => i >= 0);
+  if (empty.length === 0) return 0;
+
+  if (isMax) {
+    let best = -Infinity;
+    for (const i of empty) {
+      b[i] = 'O';
+      best = Math.max(best, minimax(b, false, depth + 1));
+      b[i] = null;
+    }
+    return best;
+  } else {
+    let best = Infinity;
+    for (const i of empty) {
+      b[i] = 'X';
+      best = Math.min(best, minimax(b, true, depth + 1));
+      b[i] = null;
+    }
+    return best;
+  }
+}
+
+function checkWinBoard(b) {
+  for (const [a, c2, c3] of LINES) {
+    if (b[a] && b[a] === b[c2] && b[a] === b[c3]) return b[a];
+  }
+  return null;
+}
+
+function aiChooseMove() {
+  const empty = getEmpty();
+  if (empty.length === 0) return -1;
+
+  if (aiLevel === 1) {
+    return empty[Math.floor(Math.random() * empty.length)];
+  }
+
+  if (aiLevel === 2) {
+    let m = findWinMove('O');
+    if (m >= 0) return m;
+    m = findWinMove('X');
+    if (m >= 0) return m;
+    if (board[4] === null) return 4;
+    return empty[Math.floor(Math.random() * empty.length)];
+  }
+
+  if (aiLevel === 3) {
+    if (Math.random() < 0.15) {
+      return empty[Math.floor(Math.random() * empty.length)];
+    }
+  }
+
+  // Level 3 (mostly) and 4: full minimax
+  let bestScore = -Infinity;
+  let bestMove = empty[0];
+  const b = [...board];
+  for (const i of empty) {
+    b[i] = 'O';
+    const score = minimax(b, false, 0);
+    b[i] = null;
+    if (score > bestScore) {
+      bestScore = score;
+      bestMove = i;
+    }
+  }
+  return bestMove;
+}
+
+// ── Controls ──
 document.addEventListener('keydown', e => {
-  // Reset marcador (siempre disponible)
   if (e.code === 'KeyR') {
     e.preventDefault();
     scores = { X:0, O:0, D:0 };
@@ -295,8 +476,7 @@ document.addEventListener('keydown', e => {
     return;
   }
 
-  if (over) return;
-  // No procesar si el overlay está visible
+  if (over || aiThinking) return;
   if (!document.getElementById('overlay').classList.contains('hidden')) return;
 
   switch (e.code) {
@@ -305,19 +485,18 @@ document.addEventListener('keydown', e => {
     case 'ArrowUp':    e.preventDefault(); if (cursor >= 3)    cursor -= 3; break;
     case 'ArrowDown':  e.preventDefault(); if (cursor < 6)     cursor += 3; break;
     case 'Enter':
-    case 'Space':      e.preventDefault(); place(); return;
+    case 'Space':      e.preventDefault(); place(cursor); return;
     default: return;
   }
   render();
 });
 
-// Click directo en celdas (touch / ratón)
 cells.forEach((cell, i) => {
   cell.addEventListener('click', () => {
-    if (over) return;
+    if (over || aiThinking) return;
     if (!document.getElementById('overlay').classList.contains('hidden')) return;
     cursor = i;
-    place();
+    place(cursor);
   });
 });
 

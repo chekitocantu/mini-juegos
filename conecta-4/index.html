@@ -42,7 +42,6 @@
     }
     #game-label { font-size:13px; letter-spacing:3px; color:#facc15; font-weight:bold; }
 
-    /* Turno */
     #turn-row {
       width:432px; max-width:100%;
       display:flex; justify-content:center; align-items:center; gap:14px;
@@ -54,12 +53,10 @@
     .turn-value.red    { color:#ef4444; }
     .turn-value.yellow { color:#facc15; }
 
-    /* Área del juego */
     #game-area {
       display:flex; flex-direction:column; align-items:center; gap:2px;
     }
 
-    /* Fila del holograma — encima del tablero */
     #hologram-row {
       display:grid;
       grid-template-columns:repeat(7, var(--cell-size));
@@ -92,7 +89,6 @@
       50%      { transform:translateY(3px); }
     }
 
-    /* Tablero (marco azul tipo Conecta-4 clásico) */
     #board {
       display:grid;
       grid-template-columns:repeat(7, var(--cell-size));
@@ -140,7 +136,6 @@
       50%      { box-shadow:inset 0 -3px 6px #00000044, 0 0 22px #fff; }
     }
 
-    /* Marcador */
     #scores { width:432px; max-width:100%; display:flex; gap:8px; }
     .score {
       flex:1; background:#16213e; border:1px solid #4a4a8a;
@@ -171,8 +166,38 @@
 
     .menu-actions {
       display:flex; flex-direction:column; gap:8px;
-      width:240px; margin-top:6px;
+      width:280px; margin-top:6px;
     }
+
+    .mode-select {
+      display:flex; gap:8px; width:100%;
+    }
+    .mode-btn {
+      flex:1; padding:10px 8px; font-family:inherit; font-size:12px;
+      font-weight:bold; letter-spacing:1px;
+      background:#16213e; color:#8888cc;
+      border:1px solid #4a4a8a; border-radius:8px;
+      cursor:pointer; transition:all .2s; text-align:center;
+    }
+    .mode-btn:hover { background:#1e2d50; color:#fff; }
+    .mode-btn.active { background:#facc15; color:#000; border-color:#facc15; }
+
+    .ai-levels {
+      display:none; flex-direction:column; gap:6px; width:100%;
+    }
+    .ai-levels.show { display:flex; }
+    .ai-level-btn {
+      padding:8px 12px; font-family:inherit; font-size:11px;
+      font-weight:bold; letter-spacing:1px;
+      background:#16213e; color:#8888cc;
+      border:1px solid #4a4a8a; border-radius:8px;
+      cursor:pointer; transition:all .2s; text-align:left;
+    }
+    .ai-level-btn:hover { background:#1e2d50; color:#fff; }
+    .ai-level-btn.active { background:#facc15; color:#000; border-color:#facc15; }
+    .ai-level-btn small { display:block; font-weight:normal; font-size:10px; color:#777; margin-top:2px; }
+    .ai-level-btn.active small { color:#333; }
+
     .btn-primary, .btn-secondary {
       padding:12px 24px; font-size:15px; font-family:inherit;
       border-radius:8px; cursor:pointer;
@@ -191,7 +216,6 @@
 
     .hidden { display:none !important; }
 
-    /* Responsive — tablero más pequeño en móvil */
     @media (max-width: 500px) {
       :root { --cell-size: 40px; --cell-gap: 5px; }
       #topbar, #turn-row, #scores { width:320px; }
@@ -204,9 +228,33 @@
 
 <div id="overlay">
   <h1>CONECTA 4</h1>
-  <p class="overlay-sub" id="overlay-sub">Dos jugadores · Rojo empieza<br>4 en línea para ganar (horizontal, vertical o diagonal)</p>
+  <p class="overlay-sub" id="overlay-sub">Rojo empieza · 4 en línea para ganar</p>
 
   <div class="menu-actions">
+    <div class="mode-select">
+      <button class="mode-btn active" data-mode="pvp">2 Jugadores</button>
+      <button class="mode-btn" data-mode="ai">vs Máquina</button>
+    </div>
+
+    <div class="ai-levels" id="ai-levels">
+      <button class="ai-level-btn active" data-level="1">
+        Nivel 1 — Novato
+        <small>Juega columnas al azar</small>
+      </button>
+      <button class="ai-level-btn" data-level="2">
+        Nivel 2 — Normal
+        <small>Bloquea y ataca si puede</small>
+      </button>
+      <button class="ai-level-btn" data-level="3">
+        Nivel 3 — Difícil
+        <small>Piensa varios turnos adelante</small>
+      </button>
+      <button class="ai-level-btn" data-level="4">
+        Nivel 4 — Imposible
+        <small>Análisis profundo, muy difícil de vencer</small>
+      </button>
+    </div>
+
     <button id="start-btn" class="btn-primary">▶ JUGAR</button>
     <a class="btn-secondary" href="../">← Volver al inicio</a>
   </div>
@@ -230,11 +278,11 @@
 
 <div id="scores">
   <div class="score red">
-    <div class="score-label">Rojo</div>
+    <div class="score-label" id="label-r">Rojo</div>
     <div class="score-value" id="score-r">0</div>
   </div>
   <div class="score yellow">
-    <div class="score-label">Amarillo</div>
+    <div class="score-label" id="label-y">Amarillo</div>
     <div class="score-value" id="score-y">0</div>
   </div>
   <div class="score">
@@ -252,7 +300,6 @@
 <script>
 const COLS = 7, ROWS_ = 6;
 
-// Construir celdas dinámicamente
 const hologramRow = document.getElementById('hologram-row');
 const boardEl     = document.getElementById('board');
 
@@ -277,12 +324,41 @@ for (let r = 0; r < ROWS_; r++) {
 }
 
 let board, cursor, current, over, dropping;
+let vsAI = false;
+let aiLevel = 1;
+let aiThinking = false;
 let scores = JSON.parse(localStorage.getItem('c4-scores') || '{"R":0,"Y":0,"D":0}');
+
+// Setup UI
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelector('.mode-btn.active').classList.remove('active');
+    btn.classList.add('active');
+    document.getElementById('ai-levels').classList.toggle('show', btn.dataset.mode === 'ai');
+  });
+});
+
+document.querySelectorAll('.ai-level-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelector('.ai-level-btn.active').classList.remove('active');
+    btn.classList.add('active');
+  });
+});
 
 function colorOf(p) { return p === 'R' ? 'red' : 'yellow'; }
 function nameOf(p)  { return p === 'R' ? 'ROJO' : 'AMARILLO'; }
 
 function init() {
+  vsAI = document.querySelector('.mode-btn.active').dataset.mode === 'ai';
+  aiLevel = parseInt(document.querySelector('.ai-level-btn.active').dataset.level);
+  aiThinking = false;
+
+  if (vsAI) {
+    document.getElementById('label-y').textContent = `Máquina Nv.${aiLevel}`;
+  } else {
+    document.getElementById('label-y').textContent = 'Amarillo';
+  }
+
   board    = Array.from({length: ROWS_}, () => Array(COLS).fill(null));
   cursor   = 3;
   current  = 'R';
@@ -294,15 +370,13 @@ function init() {
 function isColFull(c) { return board[0][c] !== null; }
 
 function render() {
-  // Holograma — solo el borde y un disco semi-transparente en la columna seleccionada
   hologramCells.forEach((cell, i) => {
     cell.className = 'hologram-cell';
-    if (i === cursor && !over && !dropping && !isColFull(i)) {
+    if (i === cursor && !over && !dropping && !isColFull(i) && !aiThinking) {
       cell.classList.add('preview', colorOf(current));
     }
   });
 
-  // Tablero
   cells.forEach((cell, idx) => {
     const r = Math.floor(idx / COLS), c = idx % COLS;
     cell.classList.remove('red','yellow','winning');
@@ -310,10 +384,13 @@ function render() {
     if (board[r][c] === 'Y') cell.classList.add('yellow');
   });
 
-  // Turno
   const turnEl = document.getElementById('turn');
-  turnEl.textContent = nameOf(current);
-  turnEl.className   = 'turn-value ' + colorOf(current);
+  if (vsAI && current === 'Y') {
+    turnEl.textContent = 'MÁQUINA';
+  } else {
+    turnEl.textContent = nameOf(current);
+  }
+  turnEl.className = 'turn-value ' + colorOf(current);
 }
 
 function updateScores() {
@@ -323,7 +400,6 @@ function updateScores() {
 }
 updateScores();
 
-// Win check — busca 4 en línea pasando por (row, col)
 function checkWin(row, col, p) {
   const dirs = [[[0,1],[0,-1]], [[1,0],[-1,0]], [[1,1],[-1,-1]], [[1,-1],[-1,1]]];
   for (const [[d1r,d1c],[d2r,d2c]] of dirs) {
@@ -344,10 +420,9 @@ function checkWin(row, col, p) {
 }
 
 function drop(col) {
-  if (over || dropping) return;
+  if (over || dropping || aiThinking) return;
   if (isColFull(col)) return;
 
-  // Encontrar la fila más baja vacía
   let row = -1;
   for (let r = ROWS_-1; r >= 0; r--) {
     if (!board[r][col]) { row = r; break; }
@@ -357,7 +432,6 @@ function drop(col) {
   const player = current;
   board[row][col] = player;
 
-  // Animación de caída
   dropping = true;
   const cell = cells[row * COLS + col];
   cell.classList.remove('red','yellow');
@@ -366,7 +440,6 @@ function drop(col) {
   cell.style.setProperty('--drop-duration', `${0.18 + (row+1) * 0.05}s`);
   cell.classList.add('dropping');
 
-  // Esconde el holograma mientras cae
   hologramCells[col].classList.remove('preview','red','yellow');
 
   const animMs = (0.18 + (row+1) * 0.05) * 1000 + 30;
@@ -375,7 +448,6 @@ function drop(col) {
     cell.style.removeProperty('--drop-from');
     cell.style.removeProperty('--drop-duration');
 
-    // ¿Hay ganador?
     const winLine = checkWin(row, col, player);
     if (winLine) {
       over = true;
@@ -384,10 +456,11 @@ function drop(col) {
       localStorage.setItem('c4-scores', JSON.stringify(scores));
       updateScores();
       winLine.forEach(([r,c]) => cells[r*COLS + c].classList.add('winning'));
+      const label = vsAI && player === 'Y' ? '¡MÁQUINA GANA!' : `¡${nameOf(player)} GANA!`;
       setTimeout(() => {
         const ol = document.getElementById('overlay');
         const h1 = ol.querySelector('h1');
-        h1.textContent = `¡${nameOf(player)} GANA!`;
+        h1.textContent = label;
         h1.className = 'winner-' + colorOf(player);
         document.getElementById('overlay-sub').textContent =
           `Rojo ${scores.R} · Amarillo ${scores.Y} · Empates ${scores.D}`;
@@ -397,7 +470,6 @@ function drop(col) {
       return;
     }
 
-    // ¿Empate?
     if (board[0].every(c => c !== null)) {
       over = true;
       dropping = false;
@@ -416,14 +488,183 @@ function drop(col) {
       return;
     }
 
-    // Cambiar turno
     current = current === 'R' ? 'Y' : 'R';
     dropping = false;
     render();
+
+    if (vsAI && current === 'Y' && !over) {
+      aiThinking = true;
+      render();
+      setTimeout(() => {
+        const col = aiChooseCol();
+        cursor = col;
+        aiThinking = false;
+        drop(col);
+      }, 500);
+    }
   }, animMs);
 }
 
-// Teclado
+// ── AI ──
+function getValidCols(b) {
+  const cols = [];
+  for (let c = 0; c < COLS; c++) {
+    if (b[0][c] === null) cols.push(c);
+  }
+  return cols;
+}
+
+function getDropRow(b, col) {
+  for (let r = ROWS_ - 1; r >= 0; r--) {
+    if (!b[r][col]) return r;
+  }
+  return -1;
+}
+
+function checkWinBoard(b, row, col, p) {
+  const dirs = [[[0,1],[0,-1]], [[1,0],[-1,0]], [[1,1],[-1,-1]], [[1,-1],[-1,1]]];
+  for (const [[d1r,d1c],[d2r,d2c]] of dirs) {
+    let count = 1;
+    for (let i = 1; i < 4; i++) {
+      const r = row + d1r*i, c = col + d1c*i;
+      if (r<0||r>=ROWS_||c<0||c>=COLS||b[r][c]!==p) break;
+      count++;
+    }
+    for (let i = 1; i < 4; i++) {
+      const r = row + d2r*i, c = col + d2c*i;
+      if (r<0||r>=ROWS_||c<0||c>=COLS||b[r][c]!==p) break;
+      count++;
+    }
+    if (count >= 4) return true;
+  }
+  return false;
+}
+
+function findWinCol(b, player) {
+  for (const c of getValidCols(b)) {
+    const r = getDropRow(b, c);
+    b[r][c] = player;
+    const wins = checkWinBoard(b, r, c, player);
+    b[r][c] = null;
+    if (wins) return c;
+  }
+  return -1;
+}
+
+function scorePosition(b, player) {
+  let score = 0;
+  const opp = player === 'Y' ? 'R' : 'Y';
+
+  // Center preference
+  for (let r = 0; r < ROWS_; r++) {
+    if (b[r][3] === player) score += 3;
+  }
+
+  // Score segments of 4
+  const segs = [];
+  for (let r = 0; r < ROWS_; r++) {
+    for (let c = 0; c <= COLS - 4; c++) {
+      segs.push([[r,c],[r,c+1],[r,c+2],[r,c+3]]);
+    }
+  }
+  for (let c = 0; c < COLS; c++) {
+    for (let r = 0; r <= ROWS_ - 4; r++) {
+      segs.push([[r,c],[r+1,c],[r+2,c],[r+3,c]]);
+    }
+  }
+  for (let r = 0; r <= ROWS_ - 4; r++) {
+    for (let c = 0; c <= COLS - 4; c++) {
+      segs.push([[r,c],[r+1,c+1],[r+2,c+2],[r+3,c+3]]);
+    }
+  }
+  for (let r = 3; r < ROWS_; r++) {
+    for (let c = 0; c <= COLS - 4; c++) {
+      segs.push([[r,c],[r-1,c+1],[r-2,c+2],[r-3,c+3]]);
+    }
+  }
+
+  for (const seg of segs) {
+    const vals = seg.map(([r,c]) => b[r][c]);
+    const mine = vals.filter(v => v === player).length;
+    const theirs = vals.filter(v => v === opp).length;
+    const empty = vals.filter(v => v === null).length;
+    if (mine === 3 && empty === 1) score += 5;
+    else if (mine === 2 && empty === 2) score += 2;
+    if (theirs === 3 && empty === 1) score -= 4;
+  }
+  return score;
+}
+
+function minimax(b, depth, alpha, beta, isMax) {
+  const valid = getValidCols(b);
+  if (valid.length === 0) return [null, 0];
+
+  // Check terminal
+  for (const c of valid) {
+    const r = getDropRow(b, c);
+    if (r >= 0) {
+      b[r][c] = 'Y';
+      if (checkWinBoard(b, r, c, 'Y')) { b[r][c] = null; return isMax ? [c, 100000 + depth] : [null, 100000 + depth]; }
+      b[r][c] = 'R';
+      if (checkWinBoard(b, r, c, 'R')) { b[r][c] = null; return !isMax ? [c, -(100000 + depth)] : [null, -(100000 + depth)]; }
+      b[r][c] = null;
+    }
+  }
+
+  if (depth === 0) return [null, scorePosition(b, 'Y')];
+
+  if (isMax) {
+    let bestScore = -Infinity, bestCol = valid[Math.floor(valid.length / 2)];
+    for (const c of valid) {
+      const r = getDropRow(b, c);
+      b[r][c] = 'Y';
+      const [, sc] = minimax(b, depth - 1, alpha, beta, false);
+      b[r][c] = null;
+      if (sc > bestScore) { bestScore = sc; bestCol = c; }
+      alpha = Math.max(alpha, sc);
+      if (alpha >= beta) break;
+    }
+    return [bestCol, bestScore];
+  } else {
+    let bestScore = Infinity, bestCol = valid[Math.floor(valid.length / 2)];
+    for (const c of valid) {
+      const r = getDropRow(b, c);
+      b[r][c] = 'R';
+      const [, sc] = minimax(b, depth - 1, alpha, beta, true);
+      b[r][c] = null;
+      if (sc < bestScore) { bestScore = sc; bestCol = c; }
+      beta = Math.min(beta, sc);
+      if (alpha >= beta) break;
+    }
+    return [bestCol, bestScore];
+  }
+}
+
+function aiChooseCol() {
+  const b = board.map(r => [...r]);
+  const valid = getValidCols(b);
+  if (valid.length === 0) return 3;
+
+  if (aiLevel === 1) {
+    return valid[Math.floor(Math.random() * valid.length)];
+  }
+
+  if (aiLevel === 2) {
+    let c = findWinCol(b, 'Y');
+    if (c >= 0) return c;
+    c = findWinCol(b, 'R');
+    if (c >= 0) return c;
+    const center = valid.includes(3) ? 3 : valid[Math.floor(valid.length / 2)];
+    if (Math.random() < 0.4) return center;
+    return valid[Math.floor(Math.random() * valid.length)];
+  }
+
+  const depth = aiLevel === 3 ? 4 : 7;
+  const [col] = minimax(b, depth, -Infinity, Infinity, true);
+  return col !== null ? col : valid[Math.floor(valid.length / 2)];
+}
+
+// ── Controls ──
 document.addEventListener('keydown', e => {
   if (e.code === 'KeyR') {
     e.preventDefault();
@@ -432,13 +673,12 @@ document.addEventListener('keydown', e => {
     updateScores();
     return;
   }
-  if (over || dropping) return;
+  if (over || dropping || aiThinking) return;
   if (!document.getElementById('overlay').classList.contains('hidden')) return;
 
   switch (e.code) {
     case 'ArrowLeft':  e.preventDefault();
       if (cursor > 0) cursor--;
-      // Saltar columnas llenas a la izquierda
       while (isColFull(cursor) && cursor > 0) cursor--;
       break;
     case 'ArrowRight': e.preventDefault();
@@ -453,19 +693,18 @@ document.addEventListener('keydown', e => {
   render();
 });
 
-// Touch / click — apunta a una columna y suelta de inmediato
 function attachColumnHandlers(elements, action) {
   elements.forEach((el, idx) => {
     const col = idx % COLS;
     el.addEventListener('click', () => {
-      if (over || dropping) return;
+      if (over || dropping || aiThinking) return;
       if (!document.getElementById('overlay').classList.contains('hidden')) return;
       cursor = col;
       render();
       action(col);
     });
     el.addEventListener('mouseenter', () => {
-      if (over || dropping) return;
+      if (over || dropping || aiThinking) return;
       if (!document.getElementById('overlay').classList.contains('hidden')) return;
       cursor = col;
       render();
