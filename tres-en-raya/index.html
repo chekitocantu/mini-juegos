@@ -363,8 +363,8 @@ function place(pos) {
     setTimeout(() => {
       const move = aiChooseMove();
       cursor = move;
-      place(move);
       aiThinking = false;
+      place(move);
     }, 400);
   }
 }
