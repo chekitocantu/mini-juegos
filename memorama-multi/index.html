@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Memorama Multijugador — BrowserLab</title>
+  <style>
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+    body {
+      background:#1a1a2e; color:#eee;
+      font-family:'Courier New',monospace;
+      display:flex; flex-direction:column;
+      align-items:center;
+      min-height:100vh;
+      user-select:none;
+    }
+
+    .back-home {
+      position:fixed; top:18px; left:18px;
+      padding:8px 14px;
+      background:#3d3a4f;
+      border:1px solid #6b6888;
+      border-radius:8px;
+      color:#c5c0d8;
+      text-decoration:none;
+      font-family:'Courier New',monospace;
+      font-size:13px; letter-spacing:1px; font-weight:bold;
+      transition:background .2s, color .2s, border-color .2s;
+      z-index:20;
+    }
+    .back-home:hover { background:#4d4969; color:#fff; border-color:#8b88a8; }
+
+    #game-label { font-size:13px; letter-spacing:3px; color:#a855f7; font-weight:bold; margin-top:24px; }
+
+    /* ── SETUP SCREEN ── */
+    #setup {
+      display:flex; flex-direction:column; align-items:center; gap:20px;
+      margin-top:40px; max-width:400px; width:90%;
+    }
+    .setup-title { font-size:20px; font-weight:bold; color:#fff; }
+    .setup-group { width:100%; }
+    .setup-label {
+      font-size:10px; letter-spacing:2px; text-transform:uppercase;
+      color:#8888cc; margin-bottom:8px; display:block;
+    }
+    .setup-options { display:flex; gap:8px; flex-wrap:wrap; }
+    .setup-options button {
+      padding:8px 16px; font-family:inherit; font-size:13px;
+      font-weight:bold; letter-spacing:1px;
+      background:#16213e; color:#8888cc;
+      border:1px solid #4a4a8a; border-radius:8px;
+      cursor:pointer; transition:all .2s; flex:1; min-width:70px;
+    }
+    .setup-options button:hover { background:#1e2d50; color:#fff; }
+    .setup-options button.active { background:#a855f7; color:#fff; border-color:#a855f7; }
+
+    .ai-levels { display:none; flex-direction:column; gap:6px; width:100%; margin-top:4px; }
+    .ai-levels.show { display:flex; }
+    .ai-level-btn {
+      padding:10px 14px; font-family:inherit; font-size:12px;
+      font-weight:bold; letter-spacing:1px;
+      background:#16213e; color:#8888cc;
+      border:1px solid #4a4a8a; border-radius:8px;
+      cursor:pointer; transition:all .2s; text-align:left;
+    }
+    .ai-level-btn:hover { background:#1e2d50; color:#fff; }
+    .ai-level-btn.active { background:#a855f7; color:#fff; border-color:#a855f7; }
+    .ai-level-btn small { display:block; font-weight:normal; font-size:10px; color:#aaa; margin-top:2px; }
+    .ai-level-btn.active small { color:#ddd; }
+
+    #start-btn {
+      padding:12px 36px; font-family:inherit; font-size:15px;
+      font-weight:bold; letter-spacing:2px;
+      background:#a855f7; color:#fff;
+      border:none; border-radius:10px;
+      cursor:pointer; transition:background .2s;
+      margin-top:8px;
+    }
+    #start-btn:hover { background:#9333ea; }
+
+    /* ── GAME SCREEN ── */
+    #game { display:none; flex-direction:column; align-items:center; gap:10px; margin-top:16px; width:100%; }
+
+    #scoreboard {
+      display:flex; gap:6px; flex-wrap:wrap; justify-content:center;
+      max-width:500px; width:90%;
+    }
+    .score-card {
+      flex:1; min-width:80px;
+      background:#16213e; border:2px solid #4a4a8a;
+      border-radius:8px; padding:8px 10px; text-align:center;
+      transition:border-color .3s, box-shadow .3s;
+    }
+    .score-card.current { border-color:#a855f7; box-shadow:0 0 12px #a855f766; }
+    .score-name { font-size:11px; letter-spacing:1px; font-weight:bold; margin-bottom:2px; }
+    .score-val { font-size:22px; font-weight:bold; color:#fff; }
+    .score-card.ai .score-name { color:#ff6b6b; }
+
+    #turn-indicator {
+      font-size:12px; letter-spacing:2px; color:#a855f7;
+      font-weight:bold; min-height:18px;
+    }
+
+    #board {
+      display:grid; gap:6px; perspective:800px;
+    }
+
+    .cell {
+      width:var(--cell); height:var(--cell);
+      cursor:pointer;
+      position:relative;
+      transform-style:preserve-3d;
+      transition:transform 0.5s;
+    }
+    .cell.flipped { transform:rotateY(180deg); }
+    .cell.matched { transform:rotateY(180deg); }
+    .cell.matched .front,
+    .cell.matched .back { border-color:#22c55e; box-shadow:0 0 10px #22c55e66; }
+
+    .front, .back {
+      position:absolute; inset:0;
+      border-radius:10px;
+      display:flex; align-items:center; justify-content:center;
+      backface-visibility:hidden;
+      border:2px solid #4a4a8a;
+    }
+    .front {
+      background:linear-gradient(135deg,#1e2d50,#16213e);
+      font-size:24px; color:#4a4a8a;
+    }
+    .front::after { content:'?'; }
+    .back {
+      background:linear-gradient(135deg,#2a1a4e,#1a1040);
+      transform:rotateY(180deg);
+      font-size:calc(var(--cell) * 0.4);
+    }
+
+    /* ── PLAYER COLORS ── */
+    .score-card[data-p="0"] .score-name { color:#60a5fa; }
+    .score-card[data-p="1"] .score-name { color:#f472b6; }
+    .score-card[data-p="2"] .score-name { color:#34d399; }
+    .score-card[data-p="3"] .score-name { color:#fbbf24; }
+
+    .cell.matched-0 .back { border-color:#60a5fa; box-shadow:0 0 10px #60a5fa66; }
+    .cell.matched-1 .back { border-color:#f472b6; box-shadow:0 0 10px #f472b666; }
+    .cell.matched-2 .back { border-color:#34d399; box-shadow:0 0 10px #34d39966; }
+    .cell.matched-3 .back { border-color:#fbbf24; box-shadow:0 0 10px #fbbf2466; }
+
+    /* ── OVERLAY ── */
+    #overlay {
+      display:none; position:fixed; inset:0;
+      background:#000a; backdrop-filter:blur(8px);
+      z-index:50; flex-direction:column;
+      align-items:center; justify-content:center; gap:14px;
+    }
+    #overlay.show { display:flex; }
+    #overlay h2 { font-size:26px; color:#a855f7; text-align:center; }
+    #overlay .results { text-align:center; color:#8888cc; font-size:13px; line-height:1.8; }
+    #overlay button {
+      padding:10px 28px; font-family:inherit; font-size:14px;
+      font-weight:bold; letter-spacing:1px;
+      background:#a855f7; color:#fff;
+      border:none; border-radius:8px;
+      cursor:pointer; transition:background .2s;
+      margin-top:4px;
+    }
+    #overlay button:hover { background:#9333ea; }
+
+    #game-grid-select {
+      display:flex; gap:8px; margin-bottom:4px;
+    }
+    #game-grid-select button {
+      padding:5px 12px; font-family:inherit; font-size:11px;
+      font-weight:bold; background:#16213e; color:#8888cc;
+      border:1px solid #4a4a8a; border-radius:6px;
+      cursor:pointer; transition:all .2s;
+    }
+    #game-grid-select button:hover { background:#1e2d50; color:#fff; }
+    #game-grid-select button.active { background:#a855f7; color:#fff; border-color:#a855f7; }
+
+    @media (max-width:500px) {
+      .back-home { top:10px; left:10px; padding:6px 10px; font-size:11px; }
+      .score-card { min-width:60px; padding:6px 6px; }
+      .score-val { font-size:18px; }
+    }
+  </style>
+</head>
+<body>
+
+<a class="back-home" href="../">← INICIO</a>
+<div id="game-label">MEMORAMA MULTIJUGADOR</div>
+
+<!-- ── SETUP ── -->
+<div id="setup">
+  <div class="setup-title">Configurar partida</div>
+
+  <div class="setup-group">
+    <span class="setup-label">Modo de juego</span>
+    <div class="setup-options" id="mode-select">
+      <button data-mode="2" class="active">2 Jugadores</button>
+      <button data-mode="3">3 Jugadores</button>
+      <button data-mode="4">4 Jugadores</button>
+      <button data-mode="ai">vs Máquina</button>
+    </div>
+  </div>
+
+  <div class="setup-group">
+    <div class="ai-levels" id="ai-levels">
+      <span class="setup-label">Dificultad de la IA</span>
+      <button class="ai-level-btn active" data-level="1">
+        Nivel 1 — Desmemoriado
+        <small>Olvida casi todo, se equivoca mucho</small>
+      </button>
+      <button class="ai-level-btn" data-level="2">
+        Nivel 2 — Normal
+        <small>Recuerda algunas cartas</small>
+      </button>
+      <button class="ai-level-btn" data-level="3">
+        Nivel 3 — Atento
+        <small>Recuerda la mayoría de cartas</small>
+      </button>
+      <button class="ai-level-btn" data-level="4">
+        Nivel 4 — Memoria perfecta
+        <small>No olvida ninguna carta que ya vio</small>
+      </button>
+    </div>
+  </div>
+
+  <div class="setup-group">
+    <span class="setup-label">Tablero</span>
+    <div class="setup-options" id="grid-select">
+      <button data-size="4" class="active">4×4</button>
+      <button data-size="6">6×6</button>
+    </div>
+  </div>
+
+  <button id="start-btn">JUGAR</button>
+</div>
+
+<!-- ── GAME ── -->
+<div id="game">
+  <div id="scoreboard"></div>
+  <div id="turn-indicator"></div>
+  <div id="board"></div>
+</div>
+
+<!-- ── WIN OVERLAY ── -->
+<div id="overlay">
+  <h2 id="win-title"></h2>
+  <div class="results" id="win-results"></div>
+  <button onclick="showSetup()">Jugar de nuevo</button>
+</div>
+
+<script>
+const EMOJIS = [
+  '🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼',
+  '🐨','🐯','🦁','🐮','🐷','🐸','🐵','🦄',
+  '🐙','🦋'
+];
+const PLAYER_COLORS = ['#60a5fa','#f472b6','#34d399','#fbbf24'];
+const PLAYER_NAMES_DEFAULT = ['Jugador 1','Jugador 2','Jugador 3','Jugador 4'];
+
+let mode = '2';
+let aiLevel = 1;
+let gridSize = 4;
+let cards = [];
+let players = [];
+let currentPlayer = 0;
+let flipped = [];
+let matched = 0;
+let totalPairs = 0;
+let locked = false;
+let aiMemory = {};
+let revealedThisTurn = [];
+
+const setupEl = document.getElementById('setup');
+const gameEl = document.getElementById('game');
+const boardEl = document.getElementById('board');
+const scoreboardEl = document.getElementById('scoreboard');
+const turnEl = document.getElementById('turn-indicator');
+const overlay = document.getElementById('overlay');
+const winTitle = document.getElementById('win-title');
+const winResults = document.getElementById('win-results');
+
+// Setup interactions
+document.querySelectorAll('#mode-select button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelector('#mode-select .active').classList.remove('active');
+    btn.classList.add('active');
+    mode = btn.dataset.mode;
+    document.getElementById('ai-levels').classList.toggle('show', mode === 'ai');
+  });
+});
+
+document.querySelectorAll('.ai-level-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelector('.ai-level-btn.active').classList.remove('active');
+    btn.classList.add('active');
+    aiLevel = parseInt(btn.dataset.level);
+  });
+});
+
+document.querySelectorAll('#grid-select button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelector('#grid-select .active').classList.remove('active');
+    btn.classList.add('active');
+    gridSize = parseInt(btn.dataset.size);
+  });
+});
+
+document.getElementById('start-btn').addEventListener('click', startGame);
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function showSetup() {
+  overlay.classList.remove('show');
+  gameEl.style.display = 'none';
+  setupEl.style.display = 'flex';
+}
+
+function startGame() {
+  setupEl.style.display = 'none';
+  gameEl.style.display = 'flex';
+  overlay.classList.remove('show');
+
+  const numPlayers = mode === 'ai' ? 2 : parseInt(mode);
+  players = [];
+  for (let i = 0; i < numPlayers; i++) {
+    players.push({
+      name: mode === 'ai' && i === 1 ? `Máquina (Nv.${aiLevel})` : PLAYER_NAMES_DEFAULT[i],
+      score: 0,
+      isAI: mode === 'ai' && i === 1
+    });
+  }
+
+  currentPlayer = 0;
+  matched = 0;
+  flipped = [];
+  locked = false;
+  aiMemory = {};
+
+  totalPairs = (gridSize * gridSize) / 2;
+  const picked = shuffle([...EMOJIS]).slice(0, totalPairs);
+  cards = shuffle([...picked, ...picked]);
+
+  renderScoreboard();
+  renderBoard();
+  updateTurn();
+}
+
+function renderScoreboard() {
+  scoreboardEl.innerHTML = players.map((p, i) => `
+    <div class="score-card ${p.isAI ? 'ai' : ''} ${i === currentPlayer ? 'current' : ''}" data-p="${i}">
+      <div class="score-name">${p.name}</div>
+      <div class="score-val">${p.score}</div>
+    </div>
+  `).join('');
+}
+
+function renderBoard() {
+  const maxW = Math.min(window.innerWidth - 24, 460);
+  const cellSize = Math.floor((maxW - (gridSize + 1) * 6) / gridSize);
+  document.documentElement.style.setProperty('--cell', Math.min(cellSize, 80) + 'px');
+  boardEl.style.gridTemplateColumns = `repeat(${gridSize}, var(--cell))`;
+  boardEl.innerHTML = '';
+
+  cards.forEach((emoji, i) => {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.dataset.index = i;
+    cell.innerHTML = `<div class="front"></div><div class="back">${emoji}</div>`;
+    cell.addEventListener('click', () => onCardClick(i));
+    boardEl.appendChild(cell);
+  });
+}
+
+function updateTurn() {
+  const p = players[currentPlayer];
+  turnEl.textContent = `Turno: ${p.name}`;
+  turnEl.style.color = p.isAI ? '#ff6b6b' : PLAYER_COLORS[currentPlayer];
+
+  document.querySelectorAll('.score-card').forEach((el, i) => {
+    el.classList.toggle('current', i === currentPlayer);
+  });
+
+  if (p.isAI) {
+    locked = true;
+    setTimeout(() => aiPlay(), 700);
+  }
+}
+
+function getCell(index) {
+  return boardEl.querySelector(`.cell[data-index="${index}"]`);
+}
+
+function onCardClick(index) {
+  if (locked) return;
+  const cell = getCell(index);
+  if (!cell || cell.classList.contains('flipped') || cell.classList.contains('matched')) return;
+  if (flipped.length >= 2) return;
+
+  flipCard(index);
+}
+
+function flipCard(index) {
+  const cell = getCell(index);
+  cell.classList.add('flipped');
+  flipped.push(index);
+
+  aiMemorize(index, cards[index]);
+
+  if (flipped.length === 2) {
+    locked = true;
+    setTimeout(() => checkMatch(), 600);
+  }
+}
+
+function checkMatch() {
+  const [a, b] = flipped;
+  const cellA = getCell(a);
+  const cellB = getCell(b);
+
+  if (cards[a] === cards[b]) {
+    cellA.classList.add('matched', `matched-${currentPlayer}`);
+    cellB.classList.add('matched', `matched-${currentPlayer}`);
+    players[currentPlayer].score++;
+    matched++;
+    renderScoreboard();
+    flipped = [];
+    locked = false;
+
+    if (matched === totalPairs) {
+      setTimeout(showResults, 500);
+      return;
+    }
+    if (players[currentPlayer].isAI) {
+      setTimeout(() => aiPlay(), 600);
+    }
+  } else {
+    setTimeout(() => {
+      cellA.classList.remove('flipped');
+      cellB.classList.remove('flipped');
+      flipped = [];
+      nextTurn();
+    }, 800);
+  }
+}
+
+function nextTurn() {
+  currentPlayer = (currentPlayer + 1) % players.length;
+  locked = false;
+  updateTurn();
+}
+
+function showResults() {
+  const maxScore = Math.max(...players.map(p => p.score));
+  const winners = players.filter(p => p.score === maxScore);
+  const tie = winners.length > 1;
+
+  if (tie) {
+    winTitle.textContent = '🤝 Empate!';
+  } else {
+    winTitle.textContent = `🏆 ${winners[0].name} gana!`;
+  }
+
+  winResults.innerHTML = players
+    .sort((a, b) => b.score - a.score)
+    .map(p => `<div style="color:${p.score === maxScore ? '#a855f7' : '#8888cc'}">${p.name}: ${p.score} par${p.score !== 1 ? 'es' : ''}</div>`)
+    .join('');
+
+  overlay.classList.add('show');
+}
+
+// ── AI LOGIC ──
+function aiMemorize(index, emoji) {
+  if (!aiMemory[emoji]) aiMemory[emoji] = new Set();
+  aiMemory[emoji].add(index);
+}
+
+function aiForgetChance() {
+  if (aiLevel === 1) return 0.8;
+  if (aiLevel === 2) return 0.5;
+  if (aiLevel === 3) return 0.2;
+  return 0;
+}
+
+function aiGetKnownCards() {
+  const known = {};
+  for (const [emoji, positions] of Object.entries(aiMemory)) {
+    const available = [...positions].filter(i => !getCell(i).classList.contains('matched'));
+    if (available.length > 0) {
+      if (aiLevel < 4) {
+        const remembered = available.filter(() => Math.random() > aiForgetChance());
+        if (remembered.length > 0) known[emoji] = remembered;
+      } else {
+        known[emoji] = available;
+      }
+    }
+  }
+  return known;
+}
+
+function aiPlay() {
+  const unmatched = [];
+  boardEl.querySelectorAll('.cell').forEach(cell => {
+    if (!cell.classList.contains('matched')) {
+      unmatched.push(parseInt(cell.dataset.index));
+    }
+  });
+
+  if (unmatched.length < 2) return;
+
+  const known = aiGetKnownCards();
+
+  let pick1 = -1, pick2 = -1;
+
+  for (const [emoji, positions] of Object.entries(known)) {
+    if (positions.length >= 2) {
+      pick1 = positions[0];
+      pick2 = positions[1];
+      break;
+    }
+  }
+
+  if (pick1 === -1) {
+    pick1 = unmatched[Math.floor(Math.random() * unmatched.length)];
+    const emoji1 = cards[pick1];
+
+    if (known[emoji1]) {
+      const knownPos = known[emoji1].filter(i => i !== pick1);
+      if (knownPos.length > 0) {
+        pick2 = knownPos[0];
+      }
+    }
+
+    if (pick2 === -1) {
+      const remaining = unmatched.filter(i => i !== pick1);
+      pick2 = remaining[Math.floor(Math.random() * remaining.length)];
+    }
+  }
+
+  flipCard(pick1);
+  setTimeout(() => flipCard(pick2), 500);
+}
+
+showSetup();
+</script>
+</body>
+</html>

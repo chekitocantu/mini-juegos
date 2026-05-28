@@ -207,6 +207,7 @@
     .card[data-game="conecta-4"]    .card-preview { background: linear-gradient(135deg, #1a2b4a, #14284a); }
     .card[data-game="doom"]         .card-preview { background: linear-gradient(135deg, #1a0000, #3a0a00); }
     .card[data-game="memorama"]     .card-preview { background: linear-gradient(135deg, #1a0a2e, #2d1060); }
+    .card[data-game="memorama-multi"] .card-preview { background: linear-gradient(135deg, #2e0a2e, #601060); }
 
     .card-preview .emoji { position: relative; z-index: 1; filter: drop-shadow(0 4px 16px #0008); }
 
@@ -425,7 +426,7 @@
   <h1>Juega desde<br>el <em>navegador</em></h1>
   <p>Sin instalaciones, sin cuentas. Solo abre y juega. Todo el código es libre y público.</p>
   <div class="hero-stats">
-    <div class="stat"><div class="stat-n">8</div><div class="stat-l">Juegos activos</div></div>
+    <div class="stat"><div class="stat-n">9</div><div class="stat-l">Juegos activos</div></div>
     <div class="stat"><div class="stat-n">0ms</div><div class="stat-l">Para cargar</div></div>
     <div class="stat"><div class="stat-n">100%</div><div class="stat-l">Open source</div></div>
   </div>
@@ -531,7 +532,7 @@
 
 <!-- DOS JUGADORES -->
 <section class="section">
-  <div class="section-title">Dos jugadores</div>
+  <div class="section-title">Multijugador</div>
   <div class="grid">
 
     <!-- TRES EN RAYA -->
@@ -547,6 +548,24 @@
           <span class="tag">Estrategia</span>
           <span class="tag">2 jugadores</span>
           <span class="tag">Local</span>
+        </div>
+        <span class="play-btn">▶ Jugar ahora</span>
+      </div>
+    </a>
+
+    <!-- MEMORAMA MULTI -->
+    <a class="card" data-game="memorama-multi" href="memorama-multi/">
+      <div class="card-preview">
+        <span class="emoji">🃏</span>
+        <span class="live-badge">EN VIVO</span>
+      </div>
+      <div class="card-body">
+        <div class="card-name">Memorama Multi</div>
+        <div class="card-desc">Memorama por turnos: 2-4 jugadores locales o contra la máquina con 4 niveles de IA.</div>
+        <div class="card-tags">
+          <span class="tag">Memoria</span>
+          <span class="tag">2-4 jugadores</span>
+          <span class="tag">vs IA</span>
         </div>
         <span class="play-btn">▶ Jugar ahora</span>
       </div>
