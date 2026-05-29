@@ -84,20 +84,22 @@
       box-shadow: 0 0 30px #4a4a8a33;
       border-radius: 4px;
       overflow: hidden;
+      touch-action: none;
     }
 
     #grid td {
-      width: 30px;
-      height: 30px;
+      width: clamp(20px, calc((100vw - 48px) / 15), 30px);
+      height: clamp(20px, calc((100vw - 48px) / 15), 30px);
       text-align: center;
       vertical-align: middle;
-      font-size: 14px;
+      font-size: clamp(10px, calc((100vw - 48px) / 30), 14px);
       font-weight: bold;
       letter-spacing: 0;
       color: #c5c5e0;
       border: 1px solid #1e1e35;
       cursor: pointer;
       transition: background .1s, color .1s;
+      -webkit-tap-highlight-color: transparent;
     }
 
     #grid td.selecting {
@@ -271,10 +273,29 @@
     }
 
     /* ── Responsive ── */
-    @media (max-width: 520px) {
-      #grid td { width: 22px; height: 22px; font-size: 10px; }
-      #game-container { flex-direction: column; align-items: center; }
-      #word-list { width: 100%; }
+    @media (max-width: 600px) {
+      body { padding: 64px 8px 16px; gap: 8px; }
+      .back-home { top: 10px; left: 10px; padding: 5px 10px; font-size: 11px; }
+      #hud { width: 100%; gap: 6px; }
+      .panel { padding: 6px 8px; }
+      .panel .val { font-size: 18px; }
+      .panel h3 { font-size: 8px; }
+      #game-container { flex-direction: column; align-items: center; width: 100%; }
+      #grid-wrapper { width: 100%; display: flex; justify-content: center; }
+      #word-list {
+        width: 100%;
+        padding: 10px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 12px;
+      }
+      #word-list h3 { width: 100%; margin-bottom: 4px; }
+      .word-item { font-size: 12px; padding: 2px 0; }
+      .diff-btn { padding: 8px 14px; font-size: 12px; }
+      .btn-primary { padding: 12px 20px; font-size: 14px; }
+      .menu-actions { width: 200px; }
+      #overlay h1 { letter-spacing: 3px; }
+      #overlay p { font-size: 12px; padding: 0 12px; }
     }
   </style>
 </head>
@@ -426,8 +447,8 @@
         td.addEventListener('mousedown', onCellDown);
         td.addEventListener('mouseenter', onCellEnter);
         td.addEventListener('mouseup', onCellUp);
-        td.addEventListener('touchstart', onTouchStart, { passive: true });
-        td.addEventListener('touchmove', onTouchMove, { passive: true });
+        td.addEventListener('touchstart', onTouchStart, { passive: false });
+        td.addEventListener('touchmove', onTouchMove, { passive: false });
         td.addEventListener('touchend', onTouchEnd);
         tr.appendChild(td);
       }
@@ -550,7 +571,9 @@
 
   function onTouchStart(e) {
     if (!gameActive) return;
+    e.preventDefault();
     const td = e.target;
+    if (!td.dataset.r) return;
     const r = +td.dataset.r, c = +td.dataset.c;
     selStart = { r, c };
     selEnd = { r, c };
@@ -560,9 +583,10 @@
 
   function onTouchMove(e) {
     if (!mouseDown || !selStart) return;
+    e.preventDefault();
     const touch = e.touches[0];
     const td = cellFromTouch(touch);
-    if (!td) return;
+    if (!td || !td.dataset.r) return;
     const r = +td.dataset.r, c = +td.dataset.c;
     selEnd = { r, c };
     const cells = cellsInLine(selStart.r, selStart.c, r, c);
@@ -571,6 +595,7 @@
 
   function onTouchEnd(e) {
     if (!mouseDown) return;
+    e.preventDefault();
     mouseDown = false;
     if (selStart && selEnd) {
       const cells = cellsInLine(selStart.r, selStart.c, selEnd.r, selEnd.c);
