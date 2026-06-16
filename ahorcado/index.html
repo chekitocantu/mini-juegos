@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ahorcado — BrowserLab</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg:      #09090f;
+      --surface: #111120;
+      --border:  #1e1e35;
+      --text:    #e2e2f0;
+      --muted:   #6b6b8a;
+      --accent:  #f97316;
+      --green:   #22c55e;
+      --red:     #ef4444;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Courier New', Courier, monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-bottom: 40px;
+      overflow-x: hidden;
+    }
+
+    .back-home {
+      position: fixed;
+      top: 18px; left: 18px;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 13px;
+      font-family: -apple-system, sans-serif;
+      padding: 6px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      transition: color 0.2s, border-color 0.2s;
+      z-index: 200;
+    }
+    .back-home:hover { color: var(--text); border-color: var(--accent); }
+
+    #game-label {
+      margin-top: 24px;
+      font-size: 11px;
+      letter-spacing: 4px;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    /* HUD */
+    #hud {
+      display: flex;
+      gap: 16px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 20px;
+      text-align: center;
+      min-width: 90px;
+    }
+    .panel h3 { font-size: 10px; letter-spacing: 2px; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; }
+    .panel .val { font-size: 22px; font-weight: 700; color: #fff; }
+    .panel .val.accent { color: var(--accent); }
+    .panel .val.green { color: var(--green); }
+    .panel .val.red { color: var(--red); }
+
+    /* DIFFICULTY SELECTOR */
+    #diff-selector {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .diff-btn {
+      padding: 8px 18px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .diff-btn:hover { border-color: var(--accent); color: var(--text); }
+    .diff-btn.active {
+      border-color: var(--accent);
+      background: #f9731618;
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    /* GAME AREA */
+    #game-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 700px;
+      padding: 0 16px;
+      margin-top: 20px;
+      gap: 24px;
+    }
+
+    /* GALLOWS */
+    #gallows-wrap {
+      display: flex;
+      justify-content: center;
+    }
+    #gallows {
+      width: 200px;
+      height: 220px;
+    }
+
+    /* HINT */
+    #hint-box {
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 1px;
+      text-align: center;
+      min-height: 18px;
+      transition: color 0.3s;
+    }
+
+    /* WORD DISPLAY */
+    #word-display {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .letter-slot {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .letter-char {
+      font-size: clamp(22px, 5vw, 32px);
+      font-weight: 700;
+      color: #fff;
+      min-width: 28px;
+      text-align: center;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.3s;
+    }
+    .letter-char.revealed { color: var(--green); }
+    .letter-char.wrong-reveal { color: var(--red); }
+    .letter-line {
+      width: 100%;
+      height: 2px;
+      background: var(--border);
+      border-radius: 2px;
+      min-width: 28px;
+    }
+
+    /* KEYBOARD */
+    #keyboard {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      align-items: center;
+    }
+    .kb-row {
+      display: flex;
+      gap: 6px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .kb-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 7px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-transform: uppercase;
+    }
+    .kb-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+    .kb-btn:disabled { cursor: default; }
+    .kb-btn.hit { background: #22c55e22; border-color: var(--green); color: var(--green); }
+    .kb-btn.miss { background: #ef444422; border-color: var(--red); color: var(--red); opacity: 0.5; }
+
+    /* MESSAGE */
+    #message {
+      font-size: 15px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      font-weight: 700;
+      min-height: 24px;
+      transition: color 0.3s;
+    }
+    #message.win { color: var(--green); }
+    #message.lose { color: var(--red); }
+
+    /* OVERLAY */
+    #overlay {
+      position: fixed;
+      inset: 0;
+      background: #000b;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      z-index: 100;
+      padding: 24px;
+    }
+    #overlay.hidden { display: none; }
+
+    #overlay h1 {
+      font-size: clamp(28px, 6vw, 48px);
+      font-weight: 800;
+      letter-spacing: 4px;
+      color: #fff;
+    }
+    #overlay h1 span { color: var(--accent); }
+
+    #overlay p {
+      color: var(--muted);
+      font-size: 14px;
+      text-align: center;
+      max-width: 360px;
+      line-height: 1.6;
+      font-family: -apple-system, sans-serif;
+    }
+
+    .ov-diff-label {
+      font-size: 11px;
+      letter-spacing: 3px;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-top: 8px;
+    }
+    .ov-diff-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      width: 100%;
+      max-width: 380px;
+    }
+    .ov-diff-btn {
+      padding: 14px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+      line-height: 1.5;
+    }
+    .ov-diff-btn:hover { border-color: var(--accent); color: var(--text); background: #f9731610; }
+    .ov-diff-btn .ov-diff-name { font-weight: 700; font-size: 15px; color: #fff; display: block; }
+    .ov-diff-btn .ov-diff-desc { font-size: 11px; color: var(--muted); display: block; margin-top: 3px; }
+
+    #ov-result {
+      font-size: 13px;
+      color: var(--muted);
+      text-align: center;
+      font-family: -apple-system, sans-serif;
+      min-height: 20px;
+    }
+    #ov-result.win-msg { color: var(--green); }
+    #ov-result.lose-msg { color: var(--red); }
+
+    #play-again-btn {
+      padding: 13px 36px;
+      background: var(--accent);
+      color: #fff;
+      font-family: 'Courier New', monospace;
+      font-size: 15px;
+      font-weight: 700;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      letter-spacing: 2px;
+      transition: background 0.2s;
+      display: none;
+    }
+    #play-again-btn:hover { background: #ea6505; }
+
+    @media (max-width: 480px) {
+      .kb-btn { width: 32px; height: 32px; font-size: 12px; }
+      #gallows { width: 160px; height: 180px; }
+    }
+  </style>
+</head>
+<body>
+
+<a class="back-home" href="../">← BrowserLab</a>
+<div id="game-label">⬡ BrowserLab</div>
+
+<div id="hud">
+  <div class="panel">
+    <h3>Nivel</h3>
+    <div class="val accent" id="hud-level">—</div>
+  </div>
+  <div class="panel">
+    <h3>Errores</h3>
+    <div class="val red" id="hud-errors">0 / 6</div>
+  </div>
+  <div class="panel">
+    <h3>Racha</h3>
+    <div class="val green" id="hud-streak">0</div>
+  </div>
+  <div class="panel">
+    <h3>Mejor</h3>
+    <div class="val" id="hud-best">0</div>
+  </div>
+</div>
+
+<div id="diff-selector">
+  <button class="diff-btn" data-d="1">Nivel 1</button>
+  <button class="diff-btn" data-d="2">Nivel 2</button>
+  <button class="diff-btn" data-d="3">Nivel 3</button>
+  <button class="diff-btn" data-d="4">Nivel 4</button>
+</div>
+
+<div id="game-area">
+  <div id="gallows-wrap">
+    <svg id="gallows" viewBox="0 0 200 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Base -->
+      <line x1="20" y1="210" x2="180" y2="210" stroke="#4a4a8a" stroke-width="4" stroke-linecap="round"/>
+      <!-- Poste vertical -->
+      <line x1="60" y1="210" x2="60" y2="20" stroke="#4a4a8a" stroke-width="4" stroke-linecap="round"/>
+      <!-- Poste horizontal -->
+      <line x1="60" y1="20" x2="140" y2="20" stroke="#4a4a8a" stroke-width="4" stroke-linecap="round"/>
+      <!-- Soga -->
+      <line x1="140" y1="20" x2="140" y2="50" stroke="#4a4a8a" stroke-width="3" stroke-linecap="round"/>
+      <!-- Partes del cuerpo (ocultas por defecto) -->
+      <!-- Cabeza -->
+      <circle id="p-head" cx="140" cy="70" r="20" stroke="#f97316" stroke-width="3" opacity="0"/>
+      <!-- Cuerpo -->
+      <line id="p-body" x1="140" y1="90" x2="140" y2="145" stroke="#f97316" stroke-width="3" stroke-linecap="round" opacity="0"/>
+      <!-- Brazo izq -->
+      <line id="p-arm-l" x1="140" y1="105" x2="110" y2="130" stroke="#f97316" stroke-width="3" stroke-linecap="round" opacity="0"/>
+      <!-- Brazo der -->
+      <line id="p-arm-r" x1="140" y1="105" x2="170" y2="130" stroke="#f97316" stroke-width="3" stroke-linecap="round" opacity="0"/>
+      <!-- Pierna izq -->
+      <line id="p-leg-l" x1="140" y1="145" x2="110" y2="180" stroke="#f97316" stroke-width="3" stroke-linecap="round" opacity="0"/>
+      <!-- Pierna der -->
+      <line id="p-leg-r" x1="140" y1="145" x2="170" y2="180" stroke="#f97316" stroke-width="3" stroke-linecap="round" opacity="0"/>
+    </svg>
+  </div>
+
+  <div id="hint-box"></div>
+  <div id="word-display"></div>
+  <div id="message"></div>
+  <div id="keyboard"></div>
+</div>
+
+<!-- OVERLAY START / END -->
+<div id="overlay">
+  <h1>A<span>H</span>ORCADO</h1>
+  <p>Adivina la palabra letra a letra antes de que el muñeco quede colgado. Elige tu nivel de dificultad.</p>
+  <div class="ov-diff-label">Selecciona dificultad</div>
+  <div class="ov-diff-grid">
+    <button class="ov-diff-btn" data-d="1">
+      <span class="ov-diff-name">🟢 Nivel 1</span>
+      <span class="ov-diff-desc">Palabras cortas<br>y cotidianas</span>
+    </button>
+    <button class="ov-diff-btn" data-d="2">
+      <span class="ov-diff-name">🟡 Nivel 2</span>
+      <span class="ov-diff-desc">Palabras medias<br>menos comunes</span>
+    </button>
+    <button class="ov-diff-btn" data-d="3">
+      <span class="ov-diff-name">🟠 Nivel 3</span>
+      <span class="ov-diff-desc">Palabras largas<br>y técnicas</span>
+    </button>
+    <button class="ov-diff-btn" data-d="4">
+      <span class="ov-diff-name">🔴 Nivel 4</span>
+      <span class="ov-diff-desc">Palabras rimbombantes<br>y rebuscadas</span>
+    </button>
+  </div>
+  <div id="ov-result"></div>
+  <button id="play-again-btn">▶ JUGAR DE NUEVO</button>
+</div>
+
+<script>
+  /* ─── PALABRAS POR NIVEL ─── */
+  const WORDS = {
+    1: [
+      // cortas (3-5 letras), uso diario
+      { w: 'GATO',  h: 'Animal doméstico que maúlla' },
+      { w: 'CASA',  h: 'Lugar donde vivimos' },
+      { w: 'MESA',  h: 'Mueble para comer o trabajar' },
+      { w: 'LUNA',  h: 'Satélite natural de la Tierra' },
+      { w: 'PERRO', h: 'Mejor amigo del humano' },
+      { w: 'LIBRO', h: 'Se lee, tiene páginas' },
+      { w: 'AGUA',  h: 'Líquido esencial para la vida' },
+      { w: 'SOL',   h: 'Estrella de nuestro sistema' },
+      { w: 'PAN',   h: 'Alimento horneado de harina' },
+      { w: 'NINO',  h: 'Persona pequeña, criatura' },
+      { w: 'FLOR',  h: 'Parte colorida de las plantas' },
+      { w: 'MANO',  h: 'Extremidad con cinco dedos' },
+      { w: 'CIELO', h: 'Lo que ves al mirar arriba' },
+      { w: 'TREN',  h: 'Transporte que va por rieles' },
+      { w: 'ROPA',  h: 'Lo que usas para vestirte' },
+      { w: 'VELA',  h: 'Da luz con llama de fuego' },
+      { w: 'PATO',  h: 'Ave que nada en estanques' },
+      { w: 'BOCA',  h: 'Usada para comer y hablar' },
+      { w: 'DEDO',  h: 'Apéndice de manos o pies' },
+      { w: 'RANA',  h: 'Anfibio que salta y croa' },
+    ],
+    2: [
+      // medias (6-8 letras), conocidas pero menos frecuentes
+      { w: 'PLANETA',    h: 'Cuerpo celeste que orbita una estrella' },
+      { w: 'JIRAFA',     h: 'Animal de cuello muy largo' },
+      { w: 'ESCALERA',   h: 'Sirve para subir pisos' },
+      { w: 'PANTALLA',   h: 'Superficie donde ves imágenes' },
+      { w: 'MEDICO',     h: 'Profesional de la salud' },
+      { w: 'BOSQUE',     h: 'Zona llena de árboles y vegetación' },
+      { w: 'CUCHARA',    h: 'Utensilio para tomar sopas' },
+      { w: 'VENTANA',    h: 'Abertura con vidrio en la pared' },
+      { w: 'PALOMA',     h: 'Ave blanca símbolo de paz' },
+      { w: 'ESCUELA',    h: 'Lugar donde se aprende' },
+      { w: 'CAMINO',     h: 'Sendero para caminar' },
+      { w: 'RELOJ',      h: 'Mide el paso del tiempo' },
+      { w: 'SEMILLA',    h: 'Origen de una nueva planta' },
+      { w: 'FANTASMA',   h: 'Aparición sobrenatural' },
+      { w: 'GUITARRA',   h: 'Instrumento musical de cuerdas' },
+      { w: 'LENGUAJE',   h: 'Sistema de comunicación humana' },
+      { w: 'SILENCIO',   h: 'Ausencia total de sonido' },
+      { w: 'CABALLO',    h: 'Animal de montar y carrera' },
+      { w: 'TORMENTA',   h: 'Lluvia intensa con rayos' },
+      { w: 'ESPEJO',     h: 'Refleja tu imagen' },
+    ],
+    3: [
+      // largas (8-12 letras), técnicas o poco comunes
+      { w: 'SATELITE',      h: 'Objeto que orbita un planeta' },
+      { w: 'DICCIONARIO',   h: 'Libro que define palabras' },
+      { w: 'FOTOSINTESIS',  h: 'Proceso de las plantas para generar energía' },
+      { w: 'TEMPERATURA',   h: 'Medida del calor de un cuerpo' },
+      { w: 'ELECTRONICO',   h: 'Relativo a la electrónica' },
+      { w: 'MATEMATICAS',   h: 'Ciencia de los números y formas' },
+      { w: 'HIPOPOTAMO',    h: 'Mamífero semiacuático de Africa' },
+      { w: 'MICROSCOPIO',   h: 'Instrumento para ver lo muy pequeño' },
+      { w: 'TERREMOTO',     h: 'Sacudida brusca de la corteza terrestre' },
+      { w: 'ARQUITECTURA',  h: 'Arte de diseñar y construir edificios' },
+      { w: 'CLOROFILA',     h: 'Pigmento verde de las plantas' },
+      { w: 'TELESCOPIO',    h: 'Instrumento para observar astros lejanos' },
+      { w: 'VOLCANICO',     h: 'Relacionado con los volcanes' },
+      { w: 'PENINSULA',     h: 'Tierra rodeada de agua por tres lados' },
+      { w: 'COMBUSTIBLE',   h: 'Sustancia que arde para generar energía' },
+      { w: 'REVOLUCION',    h: 'Cambio drástico en un sistema' },
+      { w: 'VERTEBRADO',    h: 'Animal que tiene columna vertebral' },
+      { w: 'CONTINENTE',    h: 'Gran masa de tierra en el planeta' },
+      { w: 'ECOSISTEMA',    h: 'Conjunto de seres vivos y su ambiente' },
+      { w: 'CONSTELACION',  h: 'Grupo de estrellas que forman una figura' },
+    ],
+    4: [
+      // rimbombantes, rebuscadas, cultas
+      { w: 'CIRCUNLOQUIO',      h: 'Uso de muchas palabras para decir algo simple' },
+      { w: 'PERSPICACIA',       h: 'Agudeza mental para comprender algo' },
+      { w: 'MAGNANIMIDAD',      h: 'Grandeza de ánimo y generosidad' },
+      { w: 'PROCRASTINAR',      h: 'Postergar tareas de manera habitual' },
+      { w: 'EVANESCENTE',       h: 'Que se desvanece o desaparece lentamente' },
+      { w: 'EXTRAORDINARIO',    h: 'Fuera de lo común y corriente' },
+      { w: 'SERENDIPIDAD',      h: 'Hallazgo afortunado hecho por casualidad' },
+      { w: 'METAMORFOSIS',      h: 'Transformación profunda de una cosa o ser' },
+      { w: 'ONOMATOPEYA',       h: 'Palabra que imita un sonido natural' },
+      { w: 'AMALGAMA',          h: 'Mezcla de elementos distintos' },
+      { w: 'IDIOSINCRASIA',     h: 'Carácter propio de una persona o grupo' },
+      { w: 'EFERVESCENTE',      h: 'Que burbujea o es muy vivo y animado' },
+      { w: 'PARAFERNALIA',      h: 'Conjunto de objetos o adornos aparatosos' },
+      { w: 'VEROSIMILITUD',     h: 'Apariencia de ser verdadero o real' },
+      { w: 'TRASCENDENCIA',     h: 'Importancia o consecuencia de gran alcance' },
+      { w: 'SUPERCILIOSO',      h: 'Arrogante, que se cree superior a los demás' },
+      { w: 'CIRCUNSPECTO',      h: 'Prudente, reservado y cuidadoso al hablar' },
+      { w: 'OBSEQUIOSO',        h: 'Muy complaciente y servicial en exceso' },
+      { w: 'PROCASTINACION',    h: 'El hábito de aplazar tareas sin razón' },
+      { w: 'CONSANGUINEO',      h: 'Que tiene parentesco de sangre' },
+    ],
+  };
+
+  const BODY_PARTS = ['p-head','p-body','p-arm-l','p-arm-r','p-leg-l','p-leg-r'];
+  const MAX_ERRORS = BODY_PARTS.length;
+
+  const DIFF_NAMES = { 1: 'NIVEL 1', 2: 'NIVEL 2', 3: 'NIVEL 3', 4: 'NIVEL 4' };
+  const DIFF_COLORS = { 1: '#22c55e', 2: '#eab308', 3: '#f97316', 4: '#ef4444' };
+
+  let difficulty = 1;
+  let word = '';
+  let hint = '';
+  let guessed = new Set();
+  let errors = 0;
+  let gameOver = false;
+  let streak = parseInt(localStorage.getItem('ahorcado-streak') || '0');
+  let bestStreak = parseInt(localStorage.getItem('ahorcado-best') || '0');
+  let usedWords = new Set();
+
+  /* ─── DOM refs ─── */
+  const overlay      = document.getElementById('overlay');
+  const ovResult     = document.getElementById('ov-result');
+  const playAgainBtn = document.getElementById('play-again-btn');
+  const wordDisplay  = document.getElementById('word-display');
+  const keyboard     = document.getElementById('keyboard');
+  const messageEl    = document.getElementById('message');
+  const hintBox      = document.getElementById('hint-box');
+  const hudLevel     = document.getElementById('hud-level');
+  const hudErrors    = document.getElementById('hud-errors');
+  const hudStreak    = document.getElementById('hud-streak');
+  const hudBest      = document.getElementById('hud-best');
+
+  /* ─── INIT ─── */
+  function init() {
+    updateHud();
+    buildKeyboard();
+    overlay.classList.remove('hidden');
+    ovResult.textContent = '';
+    ovResult.className = '';
+    playAgainBtn.style.display = 'none';
+    resetBodyParts();
+    wordDisplay.innerHTML = '';
+    messageEl.textContent = '';
+    hintBox.textContent = '';
+    setActiveDiffBtn(difficulty);
+  }
+
+  function setActiveDiffBtn(d) {
+    document.querySelectorAll('.diff-btn').forEach(b => b.classList.toggle('active', +b.dataset.d === d));
+  }
+
+  function updateHud() {
+    hudLevel.textContent  = DIFF_NAMES[difficulty];
+    hudLevel.style.color  = DIFF_COLORS[difficulty];
+    hudErrors.textContent = `0 / ${MAX_ERRORS}`;
+    hudStreak.textContent = streak;
+    hudBest.textContent   = bestStreak;
+  }
+
+  /* ─── GAME START ─── */
+  function startGame(d) {
+    difficulty = d;
+    setActiveDiffBtn(d);
+    guessed.clear();
+    errors = 0;
+    gameOver = false;
+
+    // pick random word not recently used
+    const pool = WORDS[d];
+    const available = pool.filter(p => !usedWords.has(p.w));
+    const pick = available.length > 0 ? available : pool;
+    const entry = pick[Math.floor(Math.random() * pick.length)];
+    word = entry.w;
+    hint = entry.h;
+
+    usedWords.add(word);
+    if (usedWords.size > pool.length / 2) usedWords.clear();
+
+    overlay.classList.add('hidden');
+    ovResult.textContent = '';
+    ovResult.className = '';
+    playAgainBtn.style.display = 'none';
+    messageEl.textContent = '';
+    messageEl.className = '';
+    hintBox.textContent = `Pista: ${hint}`;
+
+    resetBodyParts();
+    renderWord();
+    refreshKeyboard();
+    hudLevel.textContent = DIFF_NAMES[d];
+    hudLevel.style.color = DIFF_COLORS[d];
+    hudErrors.textContent = `0 / ${MAX_ERRORS}`;
+  }
+
+  /* ─── WORD RENDER ─── */
+  function renderWord() {
+    wordDisplay.innerHTML = '';
+    for (const ch of word) {
+      const slot = document.createElement('div');
+      slot.className = 'letter-slot';
+
+      const charEl = document.createElement('div');
+      charEl.className = 'letter-char';
+      charEl.dataset.letter = ch;
+
+      if (ch === ' ') {
+        charEl.style.minWidth = '20px';
+        slot.appendChild(charEl);
+        wordDisplay.appendChild(slot);
+        continue;
+      }
+
+      charEl.textContent = guessed.has(ch) ? ch : '';
+      if (guessed.has(ch)) charEl.classList.add('revealed');
+
+      const line = document.createElement('div');
+      line.className = 'letter-line';
+
+      slot.appendChild(charEl);
+      slot.appendChild(line);
+      wordDisplay.appendChild(slot);
+    }
+  }
+
+  /* ─── KEYBOARD ─── */
+  function buildKeyboard() {
+    keyboard.innerHTML = '';
+    const rows = ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'];
+    rows.forEach(row => {
+      const rowEl = document.createElement('div');
+      rowEl.className = 'kb-row';
+      for (const ch of row) {
+        const btn = document.createElement('button');
+        btn.className = 'kb-btn';
+        btn.textContent = ch;
+        btn.dataset.letter = ch;
+        btn.addEventListener('click', () => guess(ch));
+        rowEl.appendChild(btn);
+      }
+      // Add Ñ in second row
+      if (row === 'ASDFGHJKL') {
+        const btnN = document.createElement('button');
+        btnN.className = 'kb-btn';
+        btnN.textContent = 'Ñ';
+        btnN.dataset.letter = 'Ñ';
+        btnN.addEventListener('click', () => guess('Ñ'));
+        rowEl.appendChild(btnN);
+      }
+      keyboard.appendChild(rowEl);
+    });
+  }
+
+  function refreshKeyboard() {
+    keyboard.querySelectorAll('.kb-btn').forEach(btn => {
+      const ch = btn.dataset.letter;
+      btn.disabled = false;
+      btn.className = 'kb-btn';
+      if (guessed.has(ch)) {
+        btn.disabled = true;
+        btn.classList.add(word.includes(ch) ? 'hit' : 'miss');
+      }
+    });
+  }
+
+  /* ─── GUESS ─── */
+  function guess(ch) {
+    if (gameOver || guessed.has(ch)) return;
+    guessed.add(ch);
+
+    if (word.includes(ch)) {
+      // reveal letters
+      wordDisplay.querySelectorAll('.letter-char').forEach(el => {
+        if (el.dataset.letter === ch) {
+          el.textContent = ch;
+          el.classList.add('revealed');
+        }
+      });
+      // check win
+      if ([...word].every(c => c === ' ' || guessed.has(c))) {
+        endGame(true);
+      }
+    } else {
+      errors++;
+      showBodyPart(errors - 1);
+      hudErrors.textContent = `${errors} / ${MAX_ERRORS}`;
+      if (errors >= MAX_ERRORS) endGame(false);
+    }
+
+    refreshKeyboard();
+  }
+
+  /* ─── BODY PARTS ─── */
+  function showBodyPart(idx) {
+    const el = document.getElementById(BODY_PARTS[idx]);
+    if (el) el.setAttribute('opacity', '1');
+  }
+
+  function resetBodyParts() {
+    BODY_PARTS.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.setAttribute('opacity', '0');
+    });
+  }
+
+  /* ─── END GAME ─── */
+  function endGame(won) {
+    gameOver = true;
+
+    if (won) {
+      streak++;
+      if (streak > bestStreak) {
+        bestStreak = streak;
+        localStorage.setItem('ahorcado-best', bestStreak);
+      }
+      localStorage.setItem('ahorcado-streak', streak);
+      messageEl.textContent = '¡CORRECTO!';
+      messageEl.className = 'win';
+      hudStreak.textContent = streak;
+      hudBest.textContent = bestStreak;
+
+      setTimeout(() => {
+        ovResult.textContent = `✓ ¡Acertaste! La palabra era "${word}". Racha: ${streak}`;
+        ovResult.className = 'win-msg';
+        overlay.classList.remove('hidden');
+        playAgainBtn.style.display = 'block';
+        ovResult.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 700);
+    } else {
+      streak = 0;
+      localStorage.setItem('ahorcado-streak', streak);
+      hudStreak.textContent = streak;
+
+      // reveal missing letters in red
+      wordDisplay.querySelectorAll('.letter-char').forEach(el => {
+        if (el.dataset.letter && !guessed.has(el.dataset.letter)) {
+          el.textContent = el.dataset.letter;
+          el.classList.add('wrong-reveal');
+        }
+      });
+      messageEl.textContent = '¡PERDISTE!';
+      messageEl.className = 'lose';
+
+      setTimeout(() => {
+        ovResult.textContent = `✗ Era "${word}". ¡Inténtalo de nuevo!`;
+        ovResult.className = 'lose-msg';
+        overlay.classList.remove('hidden');
+        playAgainBtn.style.display = 'block';
+      }, 800);
+    }
+  }
+
+  /* ─── EVENTS ─── */
+  // Overlay difficulty buttons (start screen)
+  document.querySelectorAll('.ov-diff-btn').forEach(btn => {
+    btn.addEventListener('click', () => startGame(+btn.dataset.d));
+  });
+
+  // Play again button
+  playAgainBtn.addEventListener('click', () => {
+    overlay.classList.add('hidden');
+    startGame(difficulty);
+  });
+
+  // HUD difficulty selector
+  document.querySelectorAll('.diff-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (!gameOver && word) {
+        // mid-game: change for next round
+        difficulty = +btn.dataset.d;
+        setActiveDiffBtn(difficulty);
+      } else {
+        startGame(+btn.dataset.d);
+        overlay.classList.add('hidden');
+      }
+    });
+  });
+
+  // Physical keyboard
+  document.addEventListener('keydown', e => {
+    if (overlay.classList.contains('hidden')) {
+      const ch = e.key.toUpperCase();
+      if (/^[A-ZÁÉÍÓÚÑÜ]$/.test(ch)) {
+        // normalize accents to match word bank
+        const map = { 'Á':'A','É':'E','Í':'I','Ó':'O','Ú':'U','Ü':'U' };
+        guess(map[ch] || ch);
+      }
+      if (e.key === 'Enter' && gameOver) playAgainBtn.click();
+    }
+  });
+
+  /* ─── START ─── */
+  buildKeyboard();
+  updateHud();
+</script>
+</body>
+</html>
