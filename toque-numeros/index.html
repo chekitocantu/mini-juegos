@@ -74,9 +74,19 @@
 
     .turn-banner {
       font-size:20px; font-weight:bold; color:#fff;
-      margin-bottom:8px; letter-spacing:1px;
+      margin-bottom:4px; letter-spacing:1px;
     }
-    .turn-banner .player-name { color:#f59e0b; }
+    .turn-banner .p1-color { color:#3b82f6; }
+    .turn-banner .p2-color { color:#ef4444; }
+
+    .scoreboard {
+      display:flex; gap:32px; margin-bottom:12px;
+      font-size:13px; letter-spacing:1px;
+    }
+    .scoreboard .score-item { display:flex; align-items:center; gap:8px; }
+    .scoreboard .p1-label { color:#3b82f6; font-weight:bold; }
+    .scoreboard .p2-label { color:#ef4444; font-weight:bold; }
+    .scoreboard .score-val { color:#fff; font-weight:bold; font-size:16px; }
 
     .info-bar {
       display:flex; gap:24px; margin-bottom:16px;
@@ -96,6 +106,7 @@
     .grid-board {
       display:grid; gap:8px;
       margin-bottom:20px;
+      width:100%;
     }
     .grid-3x3 { grid-template-columns:repeat(3,1fr); max-width:300px; }
     .grid-4x4 { grid-template-columns:repeat(4,1fr); max-width:400px; }
@@ -109,22 +120,23 @@
       border:2px solid #4a4a8a;
       border-radius:10px;
       cursor:pointer;
-      transition:all .15s;
-      color:#16213e;
+      transition:border-color .15s, transform .15s;
+      color:transparent;
       min-width:50px;
     }
-    .cell:hover:not(.revealed):not(.wrong):not(.disabled) {
-      border-color:#f59e0b; background:#1e2d50;
+    .cell:hover:not(.revealed):not(.peeking):not(.locked) {
+      border-color:#f59e0b;
+      transform:scale(1.05);
     }
     .cell.revealed {
       background:#f59e0b; color:#000; border-color:#f59e0b;
       cursor:default;
     }
-    .cell.wrong {
+    .cell.peeking {
       background:#ef4444; color:#fff; border-color:#ef4444;
       animation:shake .4s;
     }
-    .cell.disabled { cursor:default; opacity:0.7; }
+    .cell.locked { cursor:default; opacity:0.6; }
 
     @keyframes shake {
       0%,100% { transform:translateX(0); }
@@ -139,8 +151,6 @@
     }
     .result-title { font-size:26px; font-weight:bold; color:#f59e0b; letter-spacing:1px; }
     .result-detail { font-size:14px; color:#aaa; letter-spacing:1px; text-align:center; line-height:1.8; }
-    .result-detail .winner { color:#f59e0b; font-weight:bold; }
-    .result-detail .time-val { color:#fff; font-weight:bold; }
 
     #play-again-btn {
       padding:12px 32px; font-family:inherit; font-size:14px;
@@ -198,7 +208,11 @@
 
 <!-- GAME -->
 <div id="game">
-  <div class="turn-banner">Turno: <span class="player-name" id="current-player">Jugador 1</span></div>
+  <div class="turn-banner">Turno: <span id="current-player"></span></div>
+  <div class="scoreboard">
+    <div class="score-item"><span class="p1-label">J1</span> <span class="score-val" id="score-p1">0</span></div>
+    <div class="score-item"><span class="p2-label">J2</span> <span class="score-val" id="score-p2">0</span></div>
+  </div>
   <div class="info-bar">
     <span>Siguiente: <strong id="next-number" style="color:#f59e0b">1</strong></span>
     <span>⏱ <span class="timer-val" id="timer-display">0.00</span>s</span>
@@ -210,10 +224,10 @@
 <div id="results">
   <div class="result-title" id="winner-text"></div>
   <table class="scores-table">
-    <thead><tr><th>Jugador</th><th>Tiempo</th></tr></thead>
+    <thead><tr><th>Jugador</th><th>Aciertos</th></tr></thead>
     <tbody>
-      <tr><td>Jugador 1</td><td id="time-p1" class="time-val">—</td></tr>
-      <tr><td>Jugador 2</td><td id="time-p2" class="time-val">—</td></tr>
+      <tr><td class="p1-label" style="color:#3b82f6">Jugador 1</td><td id="final-p1" class="highlight">0</td></tr>
+      <tr><td class="p2-label" style="color:#ef4444">Jugador 2</td><td id="final-p2" class="highlight">0</td></tr>
     </tbody>
   </table>
   <div class="result-detail" id="result-detail"></div>
@@ -230,11 +244,11 @@
   let nextExpected = 1;
   let timerStart = 0;
   let timerRAF = 0;
-  let times = [0, 0];
+  let scores = [0, 0];
   let numbers = [];
   let phase = 'setup';
+  let locked = false;
 
-  // Difficulty selection
   $$('#diff-options button').forEach(btn => {
     btn.addEventListener('click', () => {
       $$('#diff-options button').forEach(b => b.classList.remove('active'));
@@ -243,18 +257,18 @@
     });
   });
 
-  // Start game
   $('#start-btn').addEventListener('click', startGame);
   $('#play-again-btn').addEventListener('click', resetAll);
 
   function startGame() {
     currentPlayer = 1;
-    times = [0, 0];
-    $('#time-p1').textContent = '—';
-    $('#time-p2').textContent = '—';
+    scores = [0, 0];
+    nextExpected = 1;
+    $('#score-p1').textContent = '0';
+    $('#score-p2').textContent = '0';
     $('#setup').style.display = 'none';
     $('#results').style.display = 'none';
-    startCountdown(() => beginTurn());
+    startCountdown(() => beginGame());
   }
 
   function startCountdown(cb) {
@@ -277,17 +291,29 @@
     }, 800);
   }
 
-  function beginTurn() {
+  function beginGame() {
     nextExpected = 1;
     numbers = shuffle(Array.from({length: gridSize}, (_, i) => i + 1));
     renderBoard();
     $('#game').style.display = 'flex';
-    $('#current-player').textContent = 'Jugador ' + currentPlayer;
+    updateTurnDisplay();
     $('#next-number').textContent = '1';
     $('#timer-display').textContent = '0.00';
     phase = 'playing';
+    locked = false;
     timerStart = performance.now();
     tickTimer();
+  }
+
+  function updateTurnDisplay() {
+    const el = $('#current-player');
+    if (currentPlayer === 1) {
+      el.className = 'p1-color';
+      el.textContent = 'Jugador 1';
+    } else {
+      el.className = 'p2-color';
+      el.textContent = 'Jugador 2';
+    }
   }
 
   function renderBoard() {
@@ -295,7 +321,7 @@
     const cols = Math.round(Math.sqrt(gridSize));
     board.className = 'grid-board grid-' + cols + 'x' + cols;
     board.innerHTML = '';
-    numbers.forEach((num, i) => {
+    numbers.forEach((num) => {
       const cell = document.createElement('div');
       cell.className = 'cell';
       cell.textContent = num;
@@ -306,59 +332,57 @@
   }
 
   function handleTap(cell, num) {
-    if (phase !== 'playing') return;
+    if (phase !== 'playing' || locked) return;
     if (cell.classList.contains('revealed')) return;
 
     if (num === nextExpected) {
       cell.classList.add('revealed');
+      scores[currentPlayer - 1]++;
+      updateScores();
       nextExpected++;
       $('#next-number').textContent = nextExpected <= gridSize ? nextExpected : '✓';
 
       if (nextExpected > gridSize) {
-        finishTurn();
+        finishGame();
       }
     } else {
-      cell.classList.add('wrong');
-      setTimeout(() => cell.classList.remove('wrong'), 400);
-    }
-  }
-
-  function finishTurn() {
-    phase = 'waiting';
-    cancelAnimationFrame(timerRAF);
-    const elapsed = (performance.now() - timerStart) / 1000;
-    times[currentPlayer - 1] = elapsed;
-    const timeEl = currentPlayer === 1 ? '#time-p1' : '#time-p2';
-    $(timeEl).textContent = elapsed.toFixed(2) + 's';
-
-    if (currentPlayer === 1) {
-      currentPlayer = 2;
-      $('#game').style.display = 'none';
+      locked = true;
+      cell.classList.add('peeking');
       setTimeout(() => {
-        startCountdown(() => beginTurn());
-      }, 600);
-    } else {
-      showResults();
+        cell.classList.remove('peeking');
+        locked = false;
+        currentPlayer = currentPlayer === 1 ? 2 : 1;
+        updateTurnDisplay();
+      }, 800);
     }
   }
 
-  function showResults() {
+  function updateScores() {
+    $('#score-p1').textContent = scores[0];
+    $('#score-p2').textContent = scores[1];
+  }
+
+  function finishGame() {
+    phase = 'done';
+    cancelAnimationFrame(timerRAF);
+
     $('#game').style.display = 'none';
-    const t1 = times[0];
-    const t2 = times[1];
+    $('#final-p1').textContent = scores[0];
+    $('#final-p2').textContent = scores[1];
+
     let winnerText, detail;
-    if (t1 < t2) {
+    if (scores[0] > scores[1]) {
       winnerText = '🏆 ¡Jugador 1 gana!';
-      detail = 'Jugador 1 fue <span class="time-val">' + (t2 - t1).toFixed(2) + 's</span> más rápido';
-    } else if (t2 < t1) {
+      detail = scores[0] + ' aciertos vs ' + scores[1];
+    } else if (scores[1] > scores[0]) {
       winnerText = '🏆 ¡Jugador 2 gana!';
-      detail = 'Jugador 2 fue <span class="time-val">' + (t1 - t2).toFixed(2) + 's</span> más rápido';
+      detail = scores[1] + ' aciertos vs ' + scores[0];
     } else {
       winnerText = '🤝 ¡Empate!';
-      detail = 'Ambos jugadores terminaron en el mismo tiempo';
+      detail = 'Ambos con ' + scores[0] + ' aciertos';
     }
     $('#winner-text').textContent = winnerText;
-    $('#result-detail').innerHTML = detail;
+    $('#result-detail').textContent = detail;
     $('#results').style.display = 'flex';
   }
 
