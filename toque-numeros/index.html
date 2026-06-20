@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Toque de Números — BrowserLab</title>
+  <style>
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+    body {
+      background:#1a1a2e; color:#eee;
+      font-family:'Courier New',monospace;
+      display:flex; flex-direction:column;
+      align-items:center;
+      min-height:100vh;
+      user-select:none;
+    }
+
+    .back-home {
+      position:fixed; top:18px; left:18px;
+      padding:8px 14px;
+      background:#3d3a4f;
+      border:1px solid #6b6888;
+      border-radius:8px;
+      color:#c5c0d8;
+      text-decoration:none;
+      font-family:'Courier New',monospace;
+      font-size:13px; letter-spacing:1px; font-weight:bold;
+      transition:background .2s, color .2s, border-color .2s;
+      z-index:20;
+    }
+    .back-home:hover { background:#4d4969; color:#fff; border-color:#8b88a8; }
+
+    #game-label { font-size:13px; letter-spacing:3px; color:#f59e0b; font-weight:bold; margin-top:24px; }
+
+    h1 { font-size:28px; color:#fff; margin:12px 0 4px; letter-spacing:-1px; }
+    .subtitle { font-size:12px; color:#888; letter-spacing:1px; margin-bottom:20px; }
+
+    /* ── SETUP ── */
+    #setup {
+      display:flex; flex-direction:column; align-items:center; gap:18px;
+      max-width:400px; width:90%;
+    }
+    .setup-title { font-size:18px; font-weight:bold; color:#fff; }
+    .setup-group { width:100%; }
+    .setup-label {
+      font-size:10px; letter-spacing:2px; text-transform:uppercase;
+      color:#8888cc; margin-bottom:8px; display:block;
+    }
+    .setup-options { display:flex; gap:8px; flex-wrap:wrap; }
+    .setup-options button {
+      padding:10px 16px; font-family:inherit; font-size:13px;
+      font-weight:bold; letter-spacing:1px;
+      background:#16213e; color:#8888cc;
+      border:1px solid #4a4a8a; border-radius:8px;
+      cursor:pointer; transition:all .2s; flex:1; min-width:80px;
+      text-align:center;
+    }
+    .setup-options button:hover { background:#1e2d50; color:#fff; }
+    .setup-options button.active { background:#f59e0b; color:#000; border-color:#f59e0b; }
+
+    #start-btn {
+      padding:14px 40px; font-family:inherit; font-size:15px;
+      font-weight:bold; letter-spacing:2px;
+      background:#f59e0b; color:#000;
+      border:none; border-radius:10px;
+      cursor:pointer; transition:background .2s;
+      margin-top:8px;
+    }
+    #start-btn:hover { background:#d97706; }
+
+    /* ── GAME ── */
+    #game { display:none; flex-direction:column; align-items:center; width:90%; max-width:500px; }
+
+    .turn-banner {
+      font-size:20px; font-weight:bold; color:#fff;
+      margin-bottom:8px; letter-spacing:1px;
+    }
+    .turn-banner .player-name { color:#f59e0b; }
+
+    .info-bar {
+      display:flex; gap:24px; margin-bottom:16px;
+      font-size:14px; color:#aaa; letter-spacing:1px;
+    }
+    .info-bar span { display:flex; align-items:center; gap:6px; }
+    .info-bar .timer-val { color:#f59e0b; font-weight:bold; font-size:16px; }
+
+    .countdown-overlay {
+      position:fixed; inset:0;
+      display:flex; align-items:center; justify-content:center;
+      background:rgba(0,0,0,0.85); z-index:50;
+      font-size:120px; font-weight:bold; color:#f59e0b;
+      font-family:'Courier New',monospace;
+    }
+
+    .grid-board {
+      display:grid; gap:8px;
+      margin-bottom:20px;
+    }
+    .grid-3x3 { grid-template-columns:repeat(3,1fr); max-width:300px; }
+    .grid-4x4 { grid-template-columns:repeat(4,1fr); max-width:400px; }
+    .grid-5x5 { grid-template-columns:repeat(5,1fr); max-width:450px; }
+
+    .cell {
+      aspect-ratio:1;
+      display:flex; align-items:center; justify-content:center;
+      font-size:24px; font-weight:bold; font-family:inherit;
+      background:#16213e;
+      border:2px solid #4a4a8a;
+      border-radius:10px;
+      cursor:pointer;
+      transition:all .15s;
+      color:#16213e;
+      min-width:50px;
+    }
+    .cell:hover:not(.revealed):not(.wrong):not(.disabled) {
+      border-color:#f59e0b; background:#1e2d50;
+    }
+    .cell.revealed {
+      background:#f59e0b; color:#000; border-color:#f59e0b;
+      cursor:default;
+    }
+    .cell.wrong {
+      background:#ef4444; color:#fff; border-color:#ef4444;
+      animation:shake .4s;
+    }
+    .cell.disabled { cursor:default; opacity:0.7; }
+
+    @keyframes shake {
+      0%,100% { transform:translateX(0); }
+      25% { transform:translateX(-6px); }
+      75% { transform:translateX(6px); }
+    }
+
+    /* ── RESULTS ── */
+    #results {
+      display:none; flex-direction:column; align-items:center; gap:16px;
+      margin-top:20px;
+    }
+    .result-title { font-size:26px; font-weight:bold; color:#f59e0b; letter-spacing:1px; }
+    .result-detail { font-size:14px; color:#aaa; letter-spacing:1px; text-align:center; line-height:1.8; }
+    .result-detail .winner { color:#f59e0b; font-weight:bold; }
+    .result-detail .time-val { color:#fff; font-weight:bold; }
+
+    #play-again-btn {
+      padding:12px 32px; font-family:inherit; font-size:14px;
+      font-weight:bold; letter-spacing:2px;
+      background:#f59e0b; color:#000;
+      border:none; border-radius:10px;
+      cursor:pointer; transition:background .2s;
+    }
+    #play-again-btn:hover { background:#d97706; }
+
+    .scores-table {
+      border-collapse:collapse; margin-top:8px;
+    }
+    .scores-table th, .scores-table td {
+      padding:8px 20px; text-align:center;
+      border-bottom:1px solid #333;
+      font-size:13px; letter-spacing:1px;
+    }
+    .scores-table th { color:#888; font-size:10px; text-transform:uppercase; letter-spacing:2px; }
+    .scores-table td { color:#ddd; }
+    .scores-table .highlight { color:#f59e0b; font-weight:bold; }
+
+    @media (max-width:400px) {
+      .cell { font-size:18px; min-width:40px; }
+      h1 { font-size:22px; }
+    }
+  </style>
+</head>
+<body>
+
+<a class="back-home" href="../">← INICIO</a>
+
+<div id="game-label">BROWSERLAB</div>
+<h1>Toque de Números</h1>
+<p class="subtitle">Destapa los números en orden · 1v1 por turnos</p>
+
+<!-- SETUP -->
+<div id="setup">
+  <div class="setup-title">Configuración</div>
+
+  <div class="setup-group">
+    <span class="setup-label">Dificultad</span>
+    <div class="setup-options" id="diff-options">
+      <button data-size="9" class="active">Fácil<br><small style="font-weight:normal;font-size:10px;color:#aaa">3×3 · 9</small></button>
+      <button data-size="16">Medio<br><small style="font-weight:normal;font-size:10px;color:#aaa">4×4 · 16</small></button>
+      <button data-size="25">Difícil<br><small style="font-weight:normal;font-size:10px;color:#aaa">5×5 · 25</small></button>
+    </div>
+  </div>
+
+  <button id="start-btn">JUGAR</button>
+</div>
+
+<!-- COUNTDOWN -->
+<div class="countdown-overlay" id="countdown" style="display:none;">3</div>
+
+<!-- GAME -->
+<div id="game">
+  <div class="turn-banner">Turno: <span class="player-name" id="current-player">Jugador 1</span></div>
+  <div class="info-bar">
+    <span>Siguiente: <strong id="next-number" style="color:#f59e0b">1</strong></span>
+    <span>⏱ <span class="timer-val" id="timer-display">0.00</span>s</span>
+  </div>
+  <div class="grid-board" id="board"></div>
+</div>
+
+<!-- RESULTS -->
+<div id="results">
+  <div class="result-title" id="winner-text"></div>
+  <table class="scores-table">
+    <thead><tr><th>Jugador</th><th>Tiempo</th></tr></thead>
+    <tbody>
+      <tr><td>Jugador 1</td><td id="time-p1" class="time-val">—</td></tr>
+      <tr><td>Jugador 2</td><td id="time-p2" class="time-val">—</td></tr>
+    </tbody>
+  </table>
+  <div class="result-detail" id="result-detail"></div>
+  <button id="play-again-btn">JUGAR DE NUEVO</button>
+</div>
+
+<script>
+(function() {
+  const $ = s => document.querySelector(s);
+  const $$ = s => document.querySelectorAll(s);
+
+  let gridSize = 9;
+  let currentPlayer = 1;
+  let nextExpected = 1;
+  let timerStart = 0;
+  let timerRAF = 0;
+  let times = [0, 0];
+  let numbers = [];
+  let phase = 'setup';
+
+  // Difficulty selection
+  $$('#diff-options button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      $$('#diff-options button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      gridSize = parseInt(btn.dataset.size);
+    });
+  });
+
+  // Start game
+  $('#start-btn').addEventListener('click', startGame);
+  $('#play-again-btn').addEventListener('click', resetAll);
+
+  function startGame() {
+    currentPlayer = 1;
+    times = [0, 0];
+    $('#time-p1').textContent = '—';
+    $('#time-p2').textContent = '—';
+    $('#setup').style.display = 'none';
+    $('#results').style.display = 'none';
+    startCountdown(() => beginTurn());
+  }
+
+  function startCountdown(cb) {
+    const overlay = $('#countdown');
+    overlay.style.display = 'flex';
+    let count = 3;
+    overlay.textContent = count;
+    const iv = setInterval(() => {
+      count--;
+      if (count > 0) {
+        overlay.textContent = count;
+      } else {
+        overlay.textContent = '¡YA!';
+        setTimeout(() => {
+          overlay.style.display = 'none';
+          cb();
+        }, 400);
+        clearInterval(iv);
+      }
+    }, 800);
+  }
+
+  function beginTurn() {
+    nextExpected = 1;
+    numbers = shuffle(Array.from({length: gridSize}, (_, i) => i + 1));
+    renderBoard();
+    $('#game').style.display = 'flex';
+    $('#current-player').textContent = 'Jugador ' + currentPlayer;
+    $('#next-number').textContent = '1';
+    $('#timer-display').textContent = '0.00';
+    phase = 'playing';
+    timerStart = performance.now();
+    tickTimer();
+  }
+
+  function renderBoard() {
+    const board = $('#board');
+    const cols = Math.round(Math.sqrt(gridSize));
+    board.className = 'grid-board grid-' + cols + 'x' + cols;
+    board.innerHTML = '';
+    numbers.forEach((num, i) => {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.textContent = num;
+      cell.dataset.num = num;
+      cell.addEventListener('click', () => handleTap(cell, num));
+      board.appendChild(cell);
+    });
+  }
+
+  function handleTap(cell, num) {
+    if (phase !== 'playing') return;
+    if (cell.classList.contains('revealed')) return;
+
+    if (num === nextExpected) {
+      cell.classList.add('revealed');
+      nextExpected++;
+      $('#next-number').textContent = nextExpected <= gridSize ? nextExpected : '✓';
+
+      if (nextExpected > gridSize) {
+        finishTurn();
+      }
+    } else {
+      cell.classList.add('wrong');
+      setTimeout(() => cell.classList.remove('wrong'), 400);
+    }
+  }
+
+  function finishTurn() {
+    phase = 'waiting';
+    cancelAnimationFrame(timerRAF);
+    const elapsed = (performance.now() - timerStart) / 1000;
+    times[currentPlayer - 1] = elapsed;
+    const timeEl = currentPlayer === 1 ? '#time-p1' : '#time-p2';
+    $(timeEl).textContent = elapsed.toFixed(2) + 's';
+
+    if (currentPlayer === 1) {
+      currentPlayer = 2;
+      $('#game').style.display = 'none';
+      setTimeout(() => {
+        startCountdown(() => beginTurn());
+      }, 600);
+    } else {
+      showResults();
+    }
+  }
+
+  function showResults() {
+    $('#game').style.display = 'none';
+    const t1 = times[0];
+    const t2 = times[1];
+    let winnerText, detail;
+    if (t1 < t2) {
+      winnerText = '🏆 ¡Jugador 1 gana!';
+      detail = 'Jugador 1 fue <span class="time-val">' + (t2 - t1).toFixed(2) + 's</span> más rápido';
+    } else if (t2 < t1) {
+      winnerText = '🏆 ¡Jugador 2 gana!';
+      detail = 'Jugador 2 fue <span class="time-val">' + (t1 - t2).toFixed(2) + 's</span> más rápido';
+    } else {
+      winnerText = '🤝 ¡Empate!';
+      detail = 'Ambos jugadores terminaron en el mismo tiempo';
+    }
+    $('#winner-text').textContent = winnerText;
+    $('#result-detail').innerHTML = detail;
+    $('#results').style.display = 'flex';
+  }
+
+  function resetAll() {
+    phase = 'setup';
+    cancelAnimationFrame(timerRAF);
+    $('#game').style.display = 'none';
+    $('#results').style.display = 'none';
+    $('#setup').style.display = 'flex';
+  }
+
+  function tickTimer() {
+    if (phase !== 'playing') return;
+    const elapsed = (performance.now() - timerStart) / 1000;
+    $('#timer-display').textContent = elapsed.toFixed(2);
+    timerRAF = requestAnimationFrame(tickTimer);
+  }
+
+  function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+})();
+</script>
+
+</body>
+</html>
